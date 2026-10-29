@@ -2922,6 +2922,56 @@ def test_runner_stop_button_and_keys_work_while_the_game_is_gone():
     finally:
         main.DuckStationRam = real
 
+
+def test_story_lines_after_a_pickup_keep_the_step_up():
+    from syntax import instructions_after_checks
+    assert instructions_after_checks(["1x Mythril Dagger (chest left of Tot's door)", "Tot > Ladders down"])
+    assert not instructions_after_checks(["Tot > Ladders down", "1x Mythril Dagger (chest)"])
+
+
+def test_capped_hp_read_while_the_fight_loads_still_counts_as_capped():
+    g = Game()
+    b = step_of("gizamaluke")
+    g.coach.goto(b - 1 if ROUTE["steps"][b - 1]["type"] != "boss" else b)
+    g.screen(5, encounters=False)
+    g.code(True)
+    g.ram.write(g.a.enemy_hp[0], 62707)               # read a moment before the cap (Zorn & Thorn)
+    g.ram.write(g.a.enemy_atb[0], 100)
+    g.read()
+    g.ram.write(g.a.enemy_hp[0], 65535)               # then it sits on the cap
+    for k in range(25):
+        g.ram.write(g.a.enemy_atb[0], 140 + k * 40)
+        v = g.read()
+    assert g.coach.step == b and g.coach.battle_is_boss and not g.coach.battle_tentative
+    assert ("Enemy HP 3,175", "info") in v.badges, v.badges
+
+
+def _kind_route():
+    import routes
+    return routes.expand({"name": "k", "steps": [
+        {"disc": 2, "type": "move", "title": "Walk", "lines": ["Walk"]},
+        {"disc": 2, "type": "boss", "title": "Bandersnatches", "id": "bander", "lines": ["Attack"],
+         "groups": [{"name": "Bandersnatches", "hp": [899], "count": 2}]},
+        {"disc": 2, "type": "move", "title": "After", "lines": ["Walk on"]}]})
+
+
+def test_typed_hp_beats_learned_records_for_fights_of_one_kind():
+    g = Game(tmp_learned())
+    g.coach = Coach(_kind_route(), learned_path=tmp_learned())
+    g.coach._enc_flag_seen.add(True)
+    g.screen(400, seconds=4, encounters=False)         # no random battles here
+
+    def records(seed):
+        for k in (0, 1):
+            for off in range(8, 48):
+                g.ram.write(g.a.slot(4 + k, off), (off * seed + k + 1) & 0xFF or 1, 1)
+    records(7)
+    g.fight([899, 899], 15)
+    assert g.coach.groups_done.get(0) == 1 and g.coach.learned.fingerprint("bander@0")
+    records(13)                                        # the next one's records differ
+    g.fight([899], 15)
+    assert g.coach.current()["title"] == "After", g.coach.events
+
 if __name__ == "__main__":
     import inspect
     import sys

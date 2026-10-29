@@ -132,10 +132,12 @@ class FightsMixin:
         # A fight with learned enemy records is left out only when those records clearly
         # belong to other enemies. If one of the learned enemies isn't here at all, the
         # records may have been learned off a leftover slot (Beatrix II scored 0 against
-        # hers but had her exact HP): HP still decides.
+        # hers but had her exact HP): HP still decides. So does HP typed for a step with
+        # several fights that every enemy here has, where random battles can't happen: fights
+        # of one kind can differ in their records (Bandersnatches scored 0 against the first).
         ahead = [i for i in self._boss_steps_ahead(self.step, LOOKAHEAD_STEPS)
                  if not (self.battle_id_now and self._known_id(i) is not None)
-                 and not self._fp_rules_out(i)]
+                 and (not self._fp_rules_out(i) or self._all_typed_hp(i, form))]
         for i in ahead:  # exact learned formation (unless it goes against typed HP)
             if self._hp_fits(i, form) is not False and \
                     any(self.learned.formation(k) == form and self._learned_ok_here(k, self.learned.fingerprint(k), form)
@@ -437,6 +439,15 @@ class FightsMixin:
         if fp and form and self._hp_fits(i, form) is False:
             return None
         return fp
+
+    def _all_typed_hp(self, i: int, form: list[int]) -> bool:
+        """On a step with several fights, every enemy here has HP typed for it and random
+        battles can't happen here: that's one of its fights, whatever was learned about the
+        enemies' records (they differ between fights of one kind). A single fight keeps to
+        its records: the same HP with other enemies isn't it."""
+        typed = set(self.bosses.get(self.steps[i]["boss"], {}).get("hp") or [])
+        return (self._fights(i) > 1 and bool(typed and form) and not self.battle_random_possible
+                and all(hp_candidates(h) & typed for h in form))
 
     def _fp_rules_out(self, i: int) -> bool:
         # Step i's learned enemies are clearly not these (for every one of its fights).

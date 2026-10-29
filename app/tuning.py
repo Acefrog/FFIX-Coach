@@ -39,6 +39,7 @@ GIL_PICKUP_MAX = 100000        # a bigger jump than this is a load, not a pickup
 BAG_AFTER_FIGHT = 8.0          # seconds after a fight when new items are spoils, not pickups
 FP_MATCH = 0.9                 # how alike two fights' enemy records must be to be the same fight
 CAPPED_HP = 65535              # a boss whose HP doesn't fit the counter starts on this (Gizamaluke)
+CAPPED_SETTLE = 3.0            # seconds into a fight a capped boss's HP may still be loading
 PHASE_GAP = 1000               # early on, nothing hits for this much: a bigger drop is a new phase
 SCRIPT_HP = 10000              # FF9 adds this to bosses whose fight ends on a script
 

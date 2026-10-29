@@ -35,8 +35,9 @@ import time
 from pathlib import Path
 
 from memory import GameState
-from tuning import (ATB_DROP, CLEARED_SECONDS, IDENTIFY_WITHIN, IGT_BACK, IGT_MAX_STEP, IGT_NEW_GAME,
-                    IGT_RESET_CONFIRM, IGT_TRUST, STALE_SECONDS, UNDO_WINDOW)
+from tuning import (ATB_DROP, CAPPED_HP, CAPPED_SETTLE, CLEARED_SECONDS, IDENTIFY_WITHIN, IGT_BACK,
+                    IGT_MAX_STEP, IGT_NEW_GAME, IGT_RESET_CONFIRM, IGT_TRUST, SCRIPT_HP, STALE_SECONDS,
+                    UNDO_WINDOW)
 from steps import _bars_filling, _step_moves, step_key
 from learned import Learned
 from branches import BranchesMixin, step_numbers
@@ -648,6 +649,14 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
                     # filling for a moment: same HP as before (or a fight that picked up again).
                     if not same_as_before or (settled and k in self.active_enemy):
                         self.battle_first_hp[k] = h
+                elif (k < len(self.battle_first_hp) and h == CAPPED_HP
+                      and SCRIPT_HP <= self.battle_first_hp[k] < CAPPED_HP
+                      and now - self.battle_start_time < CAPPED_SETTLE):
+                    # Too big for the counter (Zorn & Thorn): read a moment early while the
+                    # fight loads (65472, 62707), then it sits on 65535. Damage only takes HP
+                    # down, so climbing to the cap is the load finishing.
+                    self.battle_first_hp[k] = CAPPED_HP
+                    self._script_cache.pop(k, None)
             self.battle_last_party = list(state.party_hp_slots)
             self._track_blocks(state)
             if state.battle_sig != self._fight_sig:

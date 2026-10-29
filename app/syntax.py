@@ -54,14 +54,15 @@ def is_optional(line: str) -> bool:
 
 def instructions_after_checks(lines: list[str]) -> bool:
     """Whether a step has things to do written after its last checked line ("1x Ether",
-    then "Talk to Vivi, exit"): ticking the checked lines doesn't finish it then.
-    Comments, @ lines, gaps, "(if ...)" lines and indented detail lines don't count."""
+    then "Talk to Vivi, exit", or a story line "Tot > Ladders down"): ticking the checked
+    lines doesn't finish it then. Comments, @ lines, gaps, "(if ...)" lines and indented
+    detail lines don't count."""
     last, notes = None, []
     for i, line in enumerate(expand_headers(lines)):
         if not line.strip() or is_indented(line) or not_checked(line):
             continue
         info = classify(line)
-        if info.kind == "note":
+        if info.kind in ("note", "story"):
             notes.append(i)
         elif info.checked and not info.problem and not is_optional(line):
             last = i

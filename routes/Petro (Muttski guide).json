@@ -108,10 +108,10 @@
    ],
    "preset": "Steiner 2",
    "hp": [
-    162
+    167
    ],
    "hp_names": {
-    "162": "Steiner"
+    "167": "Steiner"
    },
    "id": "steiner_2"
   },
@@ -1429,10 +1429,10 @@
    "backup": "LV5 Death: Zidane Lv 15? Don't Life/Elixir while it's queued",
    "preset": "Soulcage",
    "hp": [
-    9738
+    9765
    ],
    "hp_names": {
-    "9738": "Soulcage"
+    "9765": "Soulcage"
    },
    "lv5": [
     "zidane",
@@ -1502,7 +1502,8 @@
     "Or Eiko: Life, or Phoenix Down + attack",
     "# Stroper on the way up: a Soft"
    ],
-   "backup": "Hold Down+Left on the spoils fade after the first vine fight",
+   "backup": "Hold Down+Left on the spoils fade after the first vine fight (the 2nd vine fight is random)",
+   "fights": 3,
    "preset": "Mistodons (Iifa Tree)",
    "hp": [
     1473
@@ -1510,7 +1511,6 @@
    "hp_names": {
     "1473": "Mistodon"
    },
-   "fights": 4,
    "id": "mistodons_iifa_tree"
   },
   {
@@ -1580,7 +1580,8 @@
     "Cura (all) after the first",
     "Trance fight: Beatrix Life on the LEFT Mistodon at once"
    ],
-   "backup": "The first two can be dodged: see Muttski's video",
+   "backup": "The first two can be dodged (then F8 after the trance fight): see Muttski's video",
+   "fights": 5,
    "preset": "Mistodons (Alexandria)",
    "hp": [
     1473
@@ -1588,7 +1589,6 @@
    "hp_names": {
     "1473": "Mistodon"
    },
-   "fights": 4,
    "id": "mistodons_alexandria"
   },
   {
@@ -1809,7 +1809,7 @@
     "# Fork / Dark Hat / Egoist's Armlet / Gaia Gear",
     "Quina: Coral Ring",
     "Freya: Level Up (only if short on EXP)",
-    "1x Gulug Stone (altar)"
+    "# Then grab the Gulug Stone"
    ]
   },
   {
@@ -1817,6 +1817,7 @@
    "type": "move",
    "title": "Desert Palace (Cid)",
    "lines": [
+    "1x Gulug Stone (altar)",
     "Right: Hedgehog Pie game (fail it 5 times on purpose: no quick turns)",
     "Weights on the scales: B, C, D",
     "Climb the scales: turn the hourglass",
@@ -1881,10 +1882,10 @@
    "backup": "Bad ATB on Eiko: wait for his first turn so all four are up",
    "preset": "Valia Pira",
    "hp": [
-    12120
+    12119
    ],
    "hp_names": {
-    "12120": "Valia Pira"
+    "12119": "Valia Pira"
    },
    "id": "valia_pira"
   },
