@@ -1,0 +1,2705 @@
+{
+ "name": "Petro (Muttski guide)",
+ "steps": [
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "Config",
+   "lines": [
+    "Cursor: Memory",
+    "Battle Camera: Fixed",
+    "Movement: Run",
+    "Battle Speed: Fast",
+    "Field Message: Fast",
+    "Window Color: Classic"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Masked Man",
+   "lines": [
+    "L2: open the target window (stays open all game)",
+    "Steal Mage Masher",
+    "Then KO the whole party"
+   ],
+   "backup": "After 13 text boxes: 2nd option (kidnap Garnet)",
+   "preset": "Masked Man",
+   "hp": [
+    188
+   ],
+   "hp_names": {
+    "188": "Masked Man"
+   },
+   "id": "masked_man"
+  },
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "Alexandria as Vivi",
+   "lines": [
+    "Ticket booth > Alley: be Puck's slave > Steeple",
+    "1x Tent (steeple, left of the entrance near Puck)",
+    "Ladder: moogle, climb up > Rooftops > Name Vivi > Play"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "King Leo",
+   "lines": [
+    "Kill both Neros first (Zidane, Blank or Marcus)",
+    "Then everyone attacks King Leo",
+    "# ATB wait trick with Zidane and Blank"
+   ],
+   "backup": "100 Nobles help with Gil but aren't needed",
+   "preset": "King Leo",
+   "hp": [
+    186
+   ],
+   "hp_names": {
+    "186": "King Leo"
+   },
+   "id": "king_leo"
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "After the Nobles",
+   "lines": [
+    "Zidane: Optimize",
+    "# Mage Masher"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "Alexandria Castle",
+   "lines": [
+    "Up the stairs: Garnet scene, name Steiner",
+    "Steiner: round the grand hall, down the back stairs",
+    "Down twice to the fountain, left, up the tower",
+    "Zidane: chase Garnet"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Steiner 1",
+   "lines": [
+    "Zidane: Attack x2",
+    "  First hit 84: one more attack from Blank or Cinna"
+   ],
+   "preset": "Steiner 1",
+   "hp": [
+    169
+   ],
+   "hp_names": {
+    "169": "Steiner"
+   },
+   "id": "steiner_1"
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Steiner 2",
+   "lines": [
+    "KO everyone except Garnet"
+   ],
+   "preset": "Steiner 2",
+   "hp": [
+    162
+   ],
+   "hp_names": {
+    "162": "Steiner"
+   },
+   "id": "steiner_2"
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Steiner 3 + Bomb",
+   "lines": [
+    "KO everyone except Garnet, wait for the Bomb"
+   ],
+   "backup": "One text box between the two FMVs (Baku at the wheel)",
+   "preset": "Steiner 3 + Bomb",
+   "hp": [
+    162,
+    38
+   ],
+   "hp_names": {
+    "162": "Steiner",
+    "38": "Bomb"
+   },
+   "id": "steiner_3_bomb"
+  },
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "Evil Forest",
+   "lines": [
+    "Down through the tree, right, up to Prison Cage",
+    "# An encounter here is fine: kill it with Zidane (Lv 2)"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Prison Cage 1",
+   "lines": [
+    "Zidane & Steiner: Attack",
+    "Zidane: Dyne: Free Energy (never Tidal Flame)"
+   ],
+   "preset": "Prison Cage 1",
+   "hp": [
+    513
+   ],
+   "hp_names": {
+    "513": "Prison Cage"
+   },
+   "id": "prison_cage_1"
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Prison Cage 2",
+   "lines": [
+    "Zidane & Steiner: Attack x2",
+    "Zidane: Steal Broadsword, Steiner: Attack",
+    "  Then Zidane: Attack"
+   ],
+   "backup": "No Broadsword: the Iron Sword backup at Dali",
+   "preset": "Prison Cage 2",
+   "hp": [
+    533
+   ],
+   "hp_names": {
+    "533": "Prison Cage"
+   },
+   "id": "prison_cage_2"
+  },
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "Crash Site",
+   "lines": [
+    "Down the spiral stairs, right room",
+    "1x Ether (up, then talk to Vivi)",
+    "Leave: Blank flashback, exit left",
+    "1x Ether (down), then down the stairs",
+    "Right: talk to Baku, back left: talk again",
+    "[Baku]",
+    "Left upstairs: talk to Steiner, leave and re-enter",
+    "1x Ether (where Steiner sat)",
+    "Back to Vivi, leave the theatreship"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Baku",
+   "lines": [
+    "Zidane: Attack x3"
+   ],
+   "backup": "Don't hold R1+L1 during his physical attacks",
+   "inside": true,
+   "preset": "Baku",
+   "hp": [
+    202
+   ],
+   "hp_names": {
+    "202": "Baku"
+   },
+   "id": "baku"
+  },
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "Evil Forest (back)",
+   "lines": [
+    "Past the Prison Cage spot: left out and back in to break up the screen, then up-right",
+    "Fountain scene: exit right, then left and up",
+    "# Goblin/Wolf: Zidane or Steiner, Vivi Fire; Flying Flower: Fire Sword"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Plant Brain",
+   "lines": [
+    "KO Zidane fast: Blank arrives",
+    "Steiner: Fire Sword",
+    "Vivi: Fire",
+    "Blank: Attack",
+    "# Zidane blinded and misses himself: Vivi casts Fire on him"
+   ],
+   "backup": "Bad ATB on Zidane: let Plant Brain use Pollen first",
+   "preset": "Plant Brain",
+   "hp": [
+    916,
+    510
+   ],
+   "hp_names": {
+    "916": "Plant Brain",
+    "510": "Plant Brain"
+   },
+   "id": "plant_brain"
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "After Plant Brain",
+   "lines": [
+    "Phoenix Down and Potion on Zidane",
+    "Eye Drops on whoever has Darkness",
+    "Blank: Broadsword, -Silk Shirt, -Leather Hat",
+    "Zidane: Optimize",
+    "# Silk Shirt",
+    "Steiner: Optimize",
+    "# Iron Sword",
+    "Steiner: Bird Killer, Bug Killer",
+    "# Don't put a stolen Leather Wrist on Zidane yet"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "After Plant Brain (no Broadsword)",
+   "lines": [
+    "Phoenix Down and Potion on Zidane",
+    "Eye Drops on whoever has Darkness",
+    "Blank: -Silk Shirt, -Leather Hat",
+    "Zidane: Optimize",
+    "# Silk Shirt",
+    "# Steiner's menu comes at Dali, with the Iron Sword"
+   ],
+   "alt": true,
+   "when": "Broadsword < 1"
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Plant Spiders",
+   "lines": [
+    "4 left: KO Blank and Steiner, Vivi: Fire",
+    "3 left: same",
+    "2 left: KO Vivi, Blank, Steiner; Zidane: Attack x2"
+   ],
+   "backup": "All the EXP to Zidane",
+   "preset": "Plant Spiders",
+   "hp": [
+    33
+   ],
+   "hp_names": {
+    "33": "Plant Spider"
+   },
+   "id": "plant_spiders"
+  },
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "To the Ice Cavern",
+   "lines": [
+    "Mogster ATE: 3 boxes, then the last option",
+    "World map: run while 'Mist Continent' shows (no encounters)"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "Ice Cavern",
+   "lines": [
+    "1x Tent (left ledge after the talk)",
+    "Up > Left up the stairs > Up > Up-right > Round the curve (dodge the mist) > Right path"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Black Waltz 1 + Sealion",
+   "lines": [
+    "Black Waltz: Attack x3",
+    "Sealion: counters every 2nd hit",
+    "  HP 37+: hit once, then heal",
+    "  Heal after the 3rd hit (Tsunami comes on the 4th)",
+    "  1-2 more hits kill him: count damage"
+   ],
+   "backup": "Lv 4 hits 88-100, Lv 3 hits 84-96 (472 HP)",
+   "preset": "Black Waltz 1 + Sealion",
+   "hp": [
+    229,
+    472
+   ],
+   "hp_names": {
+    "229": "Black Waltz 1",
+    "472": "Sealion"
+   },
+   "id": "black_waltz_1_sealion"
+  },
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "Dali",
+   "lines": [
+    "Leave the inn > Garden (top right) and straight back out",
+    "Bar: in and out twice > Vivi (left) > Shop (left of the inn)",
+    "Talk to Garnet, then the shopkeeper"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "Dali Shop",
+   "lines": [
+    "Buy",
+    "  1 Leather Wrist",
+    "  3-4 Wrist",
+    "  3 Feather Hat"
+   ],
+   "backup": "1,320 Gil with 4 Wrists"
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "Dali Shop (no Broadsword)",
+   "lines": [
+    "Buy",
+    "  1 Leather Wrist",
+    "  3-4 Wrist",
+    "  3 Feather Hat",
+    "  1 Iron Sword",
+    "Steiner: Optimize",
+    "Steiner: Bird Killer, Bug Killer"
+   ],
+   "alt": true,
+   "when": "Broadsword < 1"
+  },
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "Dali Underground",
+   "lines": [
+    "Inn: Garnet > North (cutscene) > Windmill: manhole",
+    "1x Leather Wrist (box room chest, only if you didn't buy one)",
+    "Straight up through the rooms to Vivi"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "Dali Underground menu",
+   "lines": [
+    "Dagger: Feather Hat",
+    "Zidane: Leather Wrist, Leather Shirt",
+    "Vivi: Silk Shirt"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "Steiner at the farm",
+   "lines": [
+    "2x Any item (bottom of the steps: back right corner, middle front)",
+    "Morrid's house: talk, then leave",
+    "Barrel: 2nd option (Observe it more)"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Black Waltz 2",
+   "lines": [
+    "Zidane: Attack",
+    "Steiner: Fire Sword (Attack if Vivi is KO'd)",
+    "# Skip his Fira counter: see Muttski's video"
+   ],
+   "backup": "After the fight: wait for Steiner's nod before boarding (softlock)",
+   "preset": "Black Waltz 2",
+   "hp": [
+    1030
+   ],
+   "hp_names": {
+    "1030": "Black Waltz 2"
+   },
+   "id": "black_waltz_2"
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Black Waltz 3",
+   "lines": [
+    "Zidane: Attack (hold Confirm to go first)",
+    "Steiner: Fire Sword, Vivi: Fire x2",
+    "Zidane: Steal (Steepled Hat, Linen Cuirass or Silver Gloves)",
+    "Steiner: Fire Sword, Vivi: Fire x2"
+   ],
+   "preset": "Black Waltz 3",
+   "hp": [
+    1128
+   ],
+   "hp_names": {
+    "1128": "Black Waltz 3"
+   },
+   "id": "black_waltz_3"
+  },
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "Lindblum",
+   "lines": [
+    "Down one screen to the elevator; name Freya",
+    "Leave the inn, up, up-right: Weapon Shop (right)"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "Lindblum Weapon Shop",
+   "lines": [
+    "Sell all Ether, Phoenix Pinion, Eye Drops",
+    "Sell all Silver Gloves, Linen Cuirass (if stolen)",
+    "Buy",
+    "  2 Mage Masher",
+    "  1 Glass Armlet",
+    "  5 Steepled Hat (4 if you stole one)",
+    "  1 Headgear",
+    "  1 Iron Helm",
+    "  1 Leather Plate"
+   ],
+   "backup": "4,120 Gil"
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "Lindblum Synth",
+   "lines": [
+    "Synth",
+    "  1 The Ogre",
+    "  3 Cotton Robe",
+    "  2 Yellow Scarf"
+   ],
+   "backup": "2 Yellow Scarves no matter what: only 3 Robes if Gil is short"
+  },
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "Lindblum plot",
+   "lines": [
+    "Inn portal (Kupo Nut ATE) > Theatre District > Tantalus hideout",
+    "Castle > Right stairs: Steiner",
+    "Elevator (stopped) > Right stairs > Sleeping guard's clothes",
+    "Elevator, left > Lookout: all 6 (!)"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Festival of the Hunt",
+   "lines": [
+    "KO Zidane on the Mu fight",
+    "# Freya wins: Coral Ring"
+   ],
+   "preset": "Festival of the Hunt",
+   "id": "festival_of_the_hunt"
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "Dragon's Gate Shop",
+   "lines": [
+    "Sell all Cotton Robe",
+    "Sell extra Wrist",
+    "Buy",
+    "  21 Potion",
+    "  15 Phoenix Down",
+    "1x Tent (hidden: right side, behind the track ledge)"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "Chocobo's Forest",
+   "lines": [
+    "Get Choco; out to the tracks, Gysahl Greens, back in",
+    "Buy 4-5 Gysahl Greens",
+    "Ride to Gizamaluke's Grotto"
+   ],
+   "backup": "The 5th Green cures Berserk on Zidane"
+  },
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "Gizamaluke's Grotto",
+   "lines": [
+    "Right: dying Burmecian (bell)",
+    "Left: ring the bell at the door, THEN menu"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "Grotto Entrance menu",
+   "lines": [
+    "Freya: Optimize",
+    "# Iron Helm / Yellow Scarf",
+    "Zidane: Optimize",
+    "# The Ogre / Headgear / Glass Armlet / Leather Plate / Yellow Scarf",
+    "Zidane: Coral Ring, Leather Shirt",
+    "Zidane: Undead Killer, Man Eater",
+    "Freya: Bird Killer, Level Up",
+    "Freya front row"
+   ],
+   "backup": "No Flee now: kill encounters or R1+L1"
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Black Mages (Grotto)",
+   "lines": [
+    "Zidane: one Attack each (ATB wait trick)",
+    "Heal after Zorn & Thorn run"
+   ],
+   "preset": "Black Mages (Gizamaluke's Grotto 1)",
+   "hp": [
+    398
+   ],
+   "hp_names": {
+    "398": "Black Mage"
+   },
+   "fights": 2,
+   "id": "black_mages_grotto"
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "After the 2nd Black Mages",
+   "lines": [
+    "Revive and heal all",
+    "Zidane: Optimize",
+    "Zidane: Mage Masher",
+    "Zidane: Bird Killer"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "Grotto bells",
+   "lines": [
+    "Main door > Big bell (moogle) > Chest: bell > Right door",
+    "Moogle at the back: bell",
+    "Round the bell: open the left door, THEN menu"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "Before Gizamaluke",
+   "lines": [
+    "Zidane: Optimize",
+    "# The Ogre / Headgear / Leather Wrist / Leather Plate / Yellow Scarf",
+    "Zidane: Leather Wrist",
+    "Vivi: Glass Armlet"
+   ],
+   "backup": "Hardest fight of Disc 1: save here if you like"
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Gizamaluke",
+   "lines": [
+    "Throw Tents first (Darkness/Silence)",
+    "Zidane & Freya: Attack (he counters physicals)",
+    "Vivi: Potions and Phoenix Downs",
+    "@Lv Zidane, Freya"
+   ],
+   "backup": "Every Tent missed: Zidane Soul Blade (Darkness only). Zidane and Freya must live for AP",
+   "preset": "Gizamaluke",
+   "hp": [
+    3175
+   ],
+   "hp_names": {
+    "3175": "Gizamaluke"
+   },
+   "id": "gizamaluke"
+  },
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "South Gate (Steiner & Garnet)",
+   "lines": [
+    "1x Multina Racket (chest, straight left inside)",
+    "Elephant man (left) > Young man (bottom right) > Woman (top right)",
+    "Alley > Guard: pass > Alley > Train: back right seat"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "World map (after the Grotto)",
+   "lines": [
+    "Zidane: Dagger"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "Burmecia",
+   "lines": [
+    "# Up one screen, menu as the next one loads",
+    "Zidane: Optimize",
+    "# The Ogre / Headgear / Leather Wrist / Leather Plate / Yellow Scarf",
+    "Zidane: Coral Ring, Leather Shirt",
+    "Zidane: Man Eater, Protect Girls"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Black Mages (Burmecia)",
+   "lines": [
+    "Zidane: one Attack each (ATB wait trick)"
+   ],
+   "preset": "Black Mages (Burmecia)",
+   "hp": [
+    398
+   ],
+   "hp_names": {
+    "398": "Black Mage"
+   },
+   "id": "black_mages_burmecia"
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "After the Burmecia mages",
+   "lines": [
+    "Zidane: Mage Masher, Leather Hat",
+    "Zidane back row"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "Burmecia (Germinas Boots)",
+   "lines": [
+    "Right stairs, next stairs, left at the top, left room",
+    "1x Germinas Boots (cross the bridge holding Cancel)",
+    "Run back across so it falls",
+    "Mage screen: far left door > Left stairs, new bridge, right > Window: jump",
+    "Dying Burmecian (right), then the bell behind the bed",
+    "Back to the mage screen, up the right steps: big bell door",
+    "Up into the building > Right door and out > Left door > Top centre door",
+    "Fountain: top right door and out > Left, up the bridge",
+    "2nd option: Leave her alone"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Beatrix 1",
+   "lines": [
+    "Safe: let her take 10 turns, Phoenix Down the fallen"
+   ],
+   "backup": "Jump skip shortens it, but practise it first",
+   "preset": "Beatrix 1",
+   "hp": [
+    3630
+   ],
+   "hp_names": {
+    "3630": "Beatrix"
+   },
+   "id": "beatrix_1"
+  },
+  {
+   "disc": 2,
+   "type": "menu",
+   "title": "Station Shop",
+   "lines": [
+    "Cafe: attendant > Left: Cinna & Marcus > Cafe: Cinna > Shop > Steiner",
+    "Buy",
+    "  2 Mythril Gloves",
+    "  1 Barbut",
+    "Dagger: Multina Racket",
+    "Steiner: Optimize",
+    "# Barbut / Mythril Gloves / Yellow Scarf",
+    "Steiner: -Bird Killer, Man Eater"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "boss",
+   "title": "Black Waltz 3 (South Gate)",
+   "lines": [
+    "Everyone: Attack",
+    "Steiner KO'd early: KO Marcus too"
+   ],
+   "backup": "Steiner alive > only Garnet alive > Garnet + Marcus",
+   "preset": "Black Waltz 3 (South Gate)",
+   "hp": [
+    1292
+   ],
+   "hp_names": {
+    "1292": "Black Waltz 3"
+   },
+   "id": "black_waltz_3_south_gate"
+  },
+  {
+   "disc": 2,
+   "type": "move",
+   "title": "South Gate path",
+   "lines": [
+    "Up, right at the fork",
+    "?x Gil (chest round the curve after the broken bridge)",
+    "Exit right, stutter step to Treno",
+    "# Only Garnet left after BW3: revive and heal Steiner"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "move",
+   "title": "Treno",
+   "lines": [
+    "Select: 1st ATE (Treno Tradition)",
+    "Left at the fountain > Down the robber's stairs > Up, building on the left",
+    "1x Power Belt (talk to the robber in the hall: one chance!)",
+    "?x Gil (left of the auction house door, before going in)",
+    "Auction house: Garnet"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "menu",
+   "title": "Treno Shop",
+   "lines": [
+    "Buy",
+    "  1 Mythril Sword",
+    "  1 Ice Staff",
+    "  1 Bone Wrist",
+    "  1 Magus Hat",
+    "  2 Bandana",
+    "  1 Chain Plate",
+    "  1 Chain Mail",
+    "# Then up the tower and down, left across the bridge to Baku's hideout"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "menu",
+   "title": "Marcus joins",
+   "lines": [
+    "Marcus: Bandana",
+    "Steiner: Optimize",
+    "# Mythril Sword / Chain Mail / Power Belt",
+    "Steiner: Counter, MP Attack",
+    "Steiner: HP+10%, Alert (only if Steiner is Lv 2)",
+    "@Lv Steiner",
+    "Cure Steiner to full with Dagger"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "move",
+   "title": "Gargan Roo",
+   "lines": [
+    "Down to the entrance, right to Tot's house",
+    "1x Mythril Dagger (chest left of Tot's door)",
+    "Tot > Ladders down",
+    "Left path: 1st switch > Right path, up: 2nd switch",
+    "In and out of the entrance (encounters) > Down-left: 3rd switch (FEED)",
+    "# Encounters: kill them with Steiner"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "boss",
+   "title": "Ralvurahva",
+   "lines": [
+    "Steiner: Attack (some Garnet attacks)",
+    "Phoenix Down the fallen"
+   ],
+   "backup": "Poisoned: bite a turn with anyone but Steiner. Two poisoned = Night",
+   "preset": "Ralvurahva",
+   "hp": [
+    2296
+   ],
+   "hp_names": {
+    "2296": "Ralvurahva"
+   },
+   "id": "ralvurahva"
+  },
+  {
+   "disc": 2,
+   "type": "move",
+   "title": "Cleyra's Trunk",
+   "lines": [
+    "Zidane: round the mountain to the tornado",
+    "Switch right of the gate, in > Up, then down",
+    "1x Magician Shoes (bottom of the 2nd screen)"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "menu",
+   "title": "Cleyra's Trunk menu",
+   "lines": [
+    "Zidane: Optimize",
+    "# Bandana / Bone Wrist / Chain Plate / Yellow Scarf",
+    "Vivi: Optimize",
+    "# Ice Staff / Magus Hat / Magician Shoes",
+    "Freya: Optimize",
+    "# Mythril Gloves",
+    "Freya: Coral Ring",
+    "Zidane: Germinas Boots",
+    "Zidane: Insomniac, Alert",
+    "Freya: Man Eater, Cover",
+    "Zidane front row"
+   ],
+   "backup": "Get AP from at least one Trunk fight (Vivi Blizzara one-shots)"
+  },
+  {
+   "disc": 2,
+   "type": "move",
+   "title": "Cleyra's Trunk climb",
+   "lines": [
+    "Right, up the hill: nook, 2nd option (hand in the hole)",
+    "1x Ether (chest on the left)",
+    "Down, up the ropes, out > Left > Up-left, up-right, right: cave",
+    "Upper left cave, up to the sandpits > Left, left and up round the bend > Ladder",
+    "Cleyra: No to the tour"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "move",
+   "title": "Cleyra",
+   "lines": [
+    "LEFT path up to the Cathedral",
+    "1x Thunder Gloves (2nd screen: by the gazebo sign, right)",
+    "Cathedral: talk to the RIGHT guard",
+    "Back down the RIGHT side"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "boss",
+   "title": "Antlion",
+   "lines": [
+    "Vivi: Blizzara x3",
+    "Freya: Lancer x1 (x2 if Vivi under-damages)",
+    "# After Sand Storm: ATB wait for 2 Blizzaras a turn"
+   ],
+   "backup": "Bathroom break during the harp music",
+   "preset": "Antlion",
+   "hp": [
+    3938
+   ],
+   "hp_names": {
+    "3938": "Antlion"
+   },
+   "id": "antlion"
+  },
+  {
+   "disc": 2,
+   "type": "menu",
+   "title": "Cleyra Inn shop",
+   "lines": [
+    "Blue Burmecian in the inn",
+    "Buy 1 Partisan"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "menu",
+   "title": "Freya solo",
+   "lines": [
+    "Freya: Partisan, Yellow Scarf"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "boss",
+   "title": "Cleyra Soldiers",
+   "lines": [
+    "Freya Lv 7 one-shots them; Zidane Lv 9",
+    "  Under that: Vivi attacks the soldier first",
+    "@Lv Freya 7, Zidane 9",
+    "Heal between fights",
+    "Ambush: 2nd > 1st > 3rd > 1st",
+    "  No AP on the Trunk: 2nd at the third choice"
+   ],
+   "backup": "Zidane Lv 5-6: 50% to make one flee (EXP and AP lost); Lv 7-8: 20%",
+   "groups": [
+    {
+     "name": "Soldiers",
+     "hp": [
+      523
+     ],
+     "count": 5
+    },
+    {
+     "name": "Type B",
+     "hp": [
+      526
+     ],
+     "count": 2
+    },
+    {
+     "name": "Soldiers & Type B",
+     "hp": [
+      523,
+      526
+     ],
+     "count": 1
+    }
+   ],
+   "id": "cleyra_soldiers"
+  },
+  {
+   "disc": 2,
+   "type": "menu",
+   "title": "Before Beatrix 2",
+   "lines": [
+    "# Talk to all the Cleyrans you saved first (items)",
+    "Sort items, heal everyone",
+    "Ether Vivi (only if under 48 MP)",
+    "Zidane: Leather Shirt",
+    "Freya: Coral Ring"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "boss",
+   "title": "Beatrix 2",
+   "lines": [
+    "Vivi: Blizzara, Zidane & Freya: Attack"
+   ],
+   "backup": "Cure skip: see Muttski's video",
+   "preset": "Beatrix 2",
+   "hp": [
+    4736
+   ],
+   "hp_names": {
+    "4736": "Beatrix"
+   },
+   "id": "beatrix_2"
+  },
+  {
+   "disc": 2,
+   "type": "move",
+   "title": "Red Rose & Alexandria Castle",
+   "lines": [
+    "Follow Beatrix; pods: talk to Vivi",
+    "Guards: Steiner one-shots them (can be skipped)",
+    "Throne room: pull the candle",
+    "1x Ice Brand (jump off the rotating bridge)",
+    "1x Phoenix Pinion (same room)"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "menu",
+   "title": "After the Ice Brand",
+   "lines": [
+    "Freya: Optimize",
+    "# Partisan / Iron Helm / Thunder Gloves / Linen Cuirass / Yellow Scarf",
+    "Steiner: Optimize",
+    "# Ice Brand / Barbut / Mythril Gloves / Chain Mail / Power Belt"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "boss",
+   "title": "Zorn & Thorn",
+   "lines": [
+    "Steiner, Zidane, Freya: Attack Thorn",
+    "Vivi: Attack Zorn after Thorn powers him up"
+   ],
+   "backup": "Only one of them has to die: Thorn has less HP",
+   "preset": "Zorn & Thorn",
+   "hp": [
+    2984,
+    4896
+   ],
+   "hp_names": {
+    "2984": "Thorn",
+    "4896": "Zorn"
+   },
+   "id": "zorn_thorn"
+  },
+  {
+   "disc": 2,
+   "type": "boss",
+   "title": "Beatrix 3",
+   "lines": [
+    "Steiner, Zidane, Freya: Attack",
+    "Vivi: Blizzara",
+    "Phoenix Down Steiner if he falls"
+   ],
+   "backup": "Count damage: she can cast Cura",
+   "preset": "Beatrix 3",
+   "hp": [
+    5709
+   ],
+   "hp_names": {
+    "5709": "Beatrix"
+   },
+   "id": "beatrix_3"
+  },
+  {
+   "disc": 2,
+   "type": "boss",
+   "title": "Bandersnatch",
+   "lines": [
+    "Beatrix: Climhazzard",
+    "# One Freya attack + one Beatrix attack kills one"
+   ],
+   "preset": "Bandersnatch (first)",
+   "hp": [
+    899
+   ],
+   "hp_names": {
+    "899": "Bandersnatch"
+   },
+   "id": "bandersnatch"
+  },
+  {
+   "disc": 2,
+   "type": "menu",
+   "title": "After Beatrix 3",
+   "lines": [
+    "Steiner: Yellow Scarf, Bronze Armor",
+    "Zidane: Optimize",
+    "# The Ogre / Power Belt",
+    "Zidane: Leather Wrist",
+    "Zidane: MP Attack, Beast Killer"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "boss",
+   "title": "Bandersnatches & Black Mages",
+   "lines": [
+    "With Beatrix: Climhazzard",
+    "Black Mages: Zidane & Steiner Attack, Vivi Blizzara",
+    "Without Beatrix: Zidane on one (Vivi helps), Steiner & Garnet the other",
+    "Cure with Garnet before the gate trap"
+   ],
+   "groups": [
+    {
+     "name": "Bandersnatches",
+     "hp": [
+      899
+     ],
+     "count": 4
+    },
+    {
+     "name": "Black Mages",
+     "hp": [
+      623
+     ],
+     "count": 1
+    }
+   ],
+   "id": "bandersnatches_black_mages"
+  },
+  {
+   "disc": 2,
+   "type": "boss",
+   "title": "Ralvuimago",
+   "lines": [
+    "Vivi: Blizzara x2, then Zidane: Attack",
+    "Ultra Sound Wave: Remedy with Garnet",
+    "Curled up: don't attack until he uncurls",
+    "@Zidane: Flee"
+   ],
+   "backup": "While waiting: check Zidane's skills for Flee",
+   "preset": "Ralvuimago",
+   "hp": [
+    3352
+   ],
+   "hp_names": {
+    "3352": "Ralvuimago"
+   },
+   "id": "ralvuimago"
+  },
+  {
+   "disc": 2,
+   "type": "menu",
+   "title": "Pinnacle Rocks",
+   "lines": [
+    "Zidane: Dagger"
+   ],
+   "when": "Zidane: Flee not learned"
+  },
+  {
+   "disc": 2,
+   "type": "move",
+   "title": "Pinnacle Rocks to Lindblum",
+   "lines": [
+    "Across the bridge (Ramuh text) > Down the vine (optional) > Tell Ramuh you give up",
+    "Lindblum: north hugging the left > Up-right to the centre",
+    "Into the synth shop"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "menu",
+   "title": "Lindblum Synth 2",
+   "lines": [
+    "Synth 1 Exploda",
+    "# Then Cid's aide, out through the Dragon's Gate"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "menu",
+   "title": "Dragon's Gate Shop 2",
+   "lines": [
+    "Buy",
+    "  1 Mythril Helm",
+    "  1 Adaman Vest",
+    "  11 Soft"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "move",
+   "title": "Qu's Marsh",
+   "lines": [
+    "Grab a loose frog > Give it to Quina",
+    "Name Quina: CHEF, WINKY or himHOP"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "menu",
+   "title": "Qu's Marsh menu",
+   "lines": [
+    "Zidane: Optimize",
+    "# Exploda / Bandana / Bone Wrist / Adaman Vest / Power Belt",
+    "Quina: Headgear",
+    "Quina back row",
+    "# Armodullahan: run; 3rd screen hold Down+Right"
+   ],
+   "backup": "Caught by Armodullahan: Zidane's Flee"
+  },
+  {
+   "disc": 2,
+   "type": "boss",
+   "title": "Lani",
+   "lines": [
+    "Zidane: Attack, then Vivi: Blizzara",
+    "Repeat twice more",
+    "# Quina can Phoenix Down Garnet"
+   ],
+   "preset": "Lani",
+   "hp": [
+    5708
+   ],
+   "hp_names": {
+    "5708": "Lani"
+   },
+   "id": "lani"
+  },
+  {
+   "disc": 2,
+   "type": "menu",
+   "title": "After Lani",
+   "lines": [
+    "Revive and Cure all with Garnet",
+    "Zidane: Germinas Boots",
+    "Zidane: Alert"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "move",
+   "title": "Fossil Roo",
+   "lines": [
+    "Every stop: grab a flower, feed the gargant",
+    "Up the bridge > Right past the miner > Dock > Right",
+    "Switch 1 (1st option) > Left to the end and back > Up",
+    "Winding path up and left: Switch 2 > Back down > Up the stairs > Right",
+    "Switch 1 again > Left to the end and back > Left",
+    "Down past the miner, right at the moogles > Up the stairs > Up (DON'T flip it)",
+    "Down-right > Lower path: Switch 3, straight down > Right and down > Right and up: out",
+    "# Cards with the miner reset encounters"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "move",
+   "title": "Outer Continent",
+   "lines": [
+    "Run while 'Outer Continent' shows (no encounters)",
+    "Under the bridge, past Qu's Marsh: Gysahl Greens on the footprints",
+    "Chocobo up the hill to Conde Petie"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "move",
+   "title": "Conde Petie",
+   "lines": [
+    "2700x Gil (hidden: back left, behind the guard)",
+    "1x Diamond (hidden: on the bridge boat upstairs) - critical!",
+    "Vivi > Bottom right stairs (cutscene)",
+    "Chocobo to the forest bulge"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "move",
+   "title": "Black Mage Village",
+   "lines": [
+    "Forest: Right > Right > Left > Left > Right",
+    "1x Elixir (hidden: right of the weapon shop door)",
+    "[Black Mage Village Weapon Shop]",
+    "Left (Vivi runs right) > Item shop",
+    "1x Ether (hidden: on the shelf)",
+    "Right to the inn > Vivi",
+    "Back left to the synth shop",
+    "?x Gil (hidden: at the back)",
+    "[Black Mage Village Synth]",
+    "Chocobo back to Conde Petie"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "menu",
+   "title": "Black Mage Village Weapon Shop",
+   "lines": [
+    "Sell all Potion, Echo Screen, Eye Drops, Phoenix Pinion, Tent",
+    "Sell all The Ogre, Iron Sword, Mythril Sword, Javelin",
+    "Buy",
+    "  1 Lightning Staff",
+    "  1 Mage Masher",
+    "  3 Mythril Dagger",
+    "  1 Gladius",
+    "  1 Glass Armlet",
+    "  1 Bone Wrist",
+    "  1 Magic Armlet",
+    "  1 Mage's Hat",
+    "  2 Lamia's Tiara",
+    "  1 Ritual Hat",
+    "  1 Magician Cloak"
+   ],
+   "inside": true
+  },
+  {
+   "disc": 2,
+   "type": "menu",
+   "title": "Black Mage Village Synth",
+   "lines": [
+    "Synth",
+    "  1 Butterfly Sword",
+    "  1 Rune Tooth",
+    "  2 Desert Boots",
+    "  1 Coral Ring"
+   ],
+   "inside": true
+  },
+  {
+   "disc": 2,
+   "type": "move",
+   "title": "Mountain Path",
+   "lines": [
+    "Ceremony room: top right man (don't press Square)",
+    "Left hallway: Wise Man",
+    "1x Phoenix Pinion (middle of the bottom right stairs)",
+    "Follow Eiko, name her (ElMagus or Magus), right",
+    "Stiltzkin's package (666 Gil)",
+    "Menu after the Iifa Tree FMV"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "menu",
+   "title": "Before Hilgigars",
+   "lines": [
+    "Zidane: Optimize",
+    "# Rune Tooth / Ritual Hat / Bone Wrist / Adaman Vest / Power Belt",
+    "Dagger: Desert Boots",
+    "Vivi: Optimize",
+    "# Mage's Hat / Magic Armlet / Magician Cloak",
+    "Vivi: Magician Shoes",
+    "Eiko: Desert Boots",
+    "Zidane: MP Attack, Undead Killer",
+    "Cure anyone hurt (Garnet or Eiko)"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "boss",
+   "title": "Hilgigars",
+   "lines": [
+    "Zidane Attack / Vivi Blizzara",
+    "Vivi Blizzara / Zidane Attack (wait for Vivi)",
+    "Zidane Attack / Vivi Blizzara",
+    "# Cure with Garnet or Eiko when needed"
+   ],
+   "backup": "This order skips his Curaga turn",
+   "preset": "Hilgigars",
+   "hp": [
+    8106
+   ],
+   "hp_names": {
+    "8106": "Hilgigars"
+   },
+   "id": "hilgigars"
+  },
+  {
+   "disc": 2,
+   "type": "menu",
+   "title": "After Hilgigars",
+   "lines": [
+    "Zidane: Butterfly Sword, Germinas Boots",
+    "Zidane: Alert",
+    "@Zidane: Protect Girls 17",
+    "# At 17 AP: Zidane: Rune Tooth (before the Iifa elevator)"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "move",
+   "title": "Madain Sari",
+   "lines": [
+    "Out down-right and back to the fountain; cooking: any options",
+    "Left: Vivi, try the house > Entrance: Garnet > North x2: Eidolon Wall",
+    "Kitchen: bowl to Eiko, right into the kitchen",
+    "1x Phoenix Pinion (left, behind the table: not the chest)",
+    "Right: sleep",
+    "Mountain Path: left/north at the crossroads to the Iifa Tree"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "move",
+   "title": "Iifa Tree",
+   "lines": [
+    "Outside: Ask Eiko",
+    "@Zidane: Protect Girls 17",
+    "# At 17 AP: Zidane: Rune Tooth",
+    "Elevator: Try standing on it",
+    "# Stroper: a Soft; Dracozombie: Life or Phoenix Down + attack",
+    "# Zombie Breath on Zidane: Magic Tag"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "boss",
+   "title": "Iifa elevator",
+   "lines": [
+    "Zombies: Fira and Cura on them",
+    "Dracozombie: Eiko Life, or Phoenix Down + attack"
+   ],
+   "preset": "Zombies & Dracozombie (Iifa elevator)",
+   "fights": 2,
+   "id": "iifa_elevator"
+  },
+  {
+   "disc": 2,
+   "type": "move",
+   "title": "Iifa Tree bottom",
+   "lines": [
+    "1x Elixir (hidden chest: bottom of the stairs)",
+    "1x Brigandine (hidden chest: behind the wall at the front)"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "menu",
+   "title": "Before Soulcage",
+   "lines": [
+    "Zidane: Butterfly Sword, Glass Armlet, Brigandine",
+    "Zidane: -Insomniac, Ability Up",
+    "Heal if needed"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "boss",
+   "title": "Soulcage",
+   "lines": [
+    "Elixir, or Eiko: Life",
+    "Zidane must be alive at the end (Ability Up AP)",
+    "@Lv Zidane"
+   ],
+   "backup": "LV5 Death: Zidane Lv 15? Don't Life/Elixir while it's queued",
+   "preset": "Soulcage",
+   "hp": [
+    9738
+   ],
+   "hp_names": {
+    "9738": "Soulcage"
+   },
+   "lv5": [
+    "zidane",
+    "vivi",
+    "garnet",
+    "eiko"
+   ],
+   "id": "soulcage"
+  },
+  {
+   "disc": 2,
+   "type": "menu",
+   "title": "Outside the Iifa Tree",
+   "lines": [
+    "Zidane: Optimize",
+    "# Rune Tooth / Ritual Hat / Bone Wrist / Brigandine / Power Belt",
+    "Eiko: Bandana, Adaman Vest, Ruby",
+    "Eiko: Antibody, Insomniac",
+    "Zidane: MP Attack, Counter",
+    "Vivi: Insomniac, Antibody, Clear Headed"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "move",
+   "title": "Madain Sari again",
+   "lines": [
+    "Eiko's house: through the kitchen, down the stairs",
+    "Zidane: Eidolon Wall",
+    "Moogles bring loot, THEN ask the moogle for a heal"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "boss",
+   "title": "Amarant",
+   "lines": [
+    "Zidane: Attack",
+    "# He acts twice per turn of yours: watch your HP"
+   ],
+   "preset": "Scarlet Hair (Amarant)",
+   "hp": [
+    8985
+   ],
+   "hp_names": {
+    "8985": "Amarant"
+   },
+   "id": "amarant"
+  },
+  {
+   "disc": 2,
+   "type": "menu",
+   "title": "Amarant joins",
+   "lines": [
+    "# Eiko's house > Overlook ledge: hidden (!)",
+    "Add Amarant, remove Dagger",
+    "Amarant back row",
+    "Cura with Eiko"
+   ]
+  },
+  {
+   "disc": 2,
+   "type": "boss",
+   "title": "Mistodons (Iifa Tree)",
+   "lines": [
+    "Zidane: Attack (Vivi or Amarant if short)",
+    "Or Eiko: Life, or Phoenix Down + attack",
+    "# Stroper on the way up: a Soft"
+   ],
+   "backup": "Hold Down+Left on the spoils fade after the first vine fight",
+   "preset": "Mistodons (Iifa Tree)",
+   "hp": [
+    1473
+   ],
+   "hp_names": {
+    "1473": "Mistodon"
+   },
+   "fights": 4,
+   "id": "mistodons_iifa_tree"
+  },
+  {
+   "disc": 3,
+   "type": "move",
+   "title": "Alexandria",
+   "lines": [
+    "Vivi: alley, down the stairs to Ruby's",
+    "Zidane: city centre, synth shop (right)"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Alexandria Synth",
+   "lines": [
+    "Synth",
+    "  1 Angel Bless",
+    "  1 Glass Buckle",
+    "  1 Power Belt"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "move",
+   "title": "Alexandria pickups",
+   "lines": [
+    "1x Phoenix Pinion (wheelbarrow), out the north exit",
+    "1x Phoenix Pinion (before the boat, left)",
+    "?x Gil (before the boat, right)",
+    "1x Phoenix Pinion (after the boat, right)",
+    "1x Ether (after the boat, left)",
+    "1x Lapis Lazuli (up the stairs behind the fountain) - don't forget!"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "move",
+   "title": "Treno Card Tournament",
+   "lines": [
+    "Win the first two matches",
+    "Third match: winning gives the Rebirth Ring",
+    "# Bad cards: remove them all, Dr. Tot gives new ones",
+    "# A few Goblins (4-5) help set up combos"
+   ],
+   "backup": "Lost the final? This route assumes a win: switch to the guide's card-tournament-loss notes"
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Steiner & Beatrix",
+   "lines": [
+    "# Orders: 1st order to the 3rd pair of soldiers, mash the rest (Angel Earrings)",
+    "Beatrix: Rubber Helm, -Yellow Scarf, -Plate Mail",
+    "Steiner: Optimize",
+    "# Cross Helm / Mythril Gloves / Plate Mail / Power Belt",
+    "Steiner: MP Attack, Bird Killer, Devil Killer, Undead Killer",
+    "Beatrix back row"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "boss",
+   "title": "Mistodons (Alexandria)",
+   "lines": [
+    "Beatrix: Life, Steiner: Attack",
+    "Cura (all) after the first",
+    "Trance fight: Beatrix Life on the LEFT Mistodon at once"
+   ],
+   "backup": "The first two can be dodged: see Muttski's video",
+   "preset": "Mistodons (Alexandria)",
+   "hp": [
+    1473
+   ],
+   "hp_names": {
+    "1473": "Mistodon"
+   },
+   "fights": 4,
+   "id": "mistodons_alexandria"
+  },
+  {
+   "disc": 3,
+   "type": "move",
+   "title": "Lindblum (Disc 3)",
+   "lines": [
+    "1x Egoist's Armlet (chest when Zidane wakes)",
+    "Down the stairs: far right guard > Throne room guard > Bedroom: Garnet",
+    "Tram to the Shopping District: Weapon Shop"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Lindblum Weapon Shop (Disc 3)",
+   "lines": [
+    "Buy 1 Coral Sword",
+    "# Don't ask the clerk about the Potion"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "move",
+   "title": "Lindblum potions",
+   "lines": [
+    "1x Beautiful Potion (lady in white outside the weapon shop)",
+    "1x Unusual Potion (Cinna, Tantalus hideout)",
+    "1x Lapis Lazuli (artist's house)",
+    "1x Strange Potion (artist's house, bottom left)",
+    "Cid's throne room > Bottom floor: right car to the boat",
+    "Blue Narciss: Zidane + any 3"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "move",
+   "title": "Black Mage Village again",
+   "lines": [
+    "Sail south, left under the bridge, chocobo to the village",
+    "Cemetery > Chase Vivi to the entrance > Right: chocobo breeder",
+    "Chocobo back to the Blue Narciss; left round the bank to the beach",
+    "Sand pit nearest you: Desert Palace"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Desert Palace (Kuja's room)",
+   "lines": [
+    "# Party: Zidane, Freya, Quina, Amarant",
+    "Freya: Optimize",
+    "# Partisan / Lamia's Tiara / Thunder Gloves / Linen Cuirass / Rebirth Ring",
+    "Quina: Optimize",
+    "# Fork / Lamia's Tiara / Egoist's Armlet / Silk Shirt / Yellow Scarf",
+    "Amarant: Optimize",
+    "# Cat's Claws / Headgear / Bone Wrist / Adaman Vest / Yellow Scarf",
+    "Zidane: Optimize",
+    "# Angel Bless / Ritual Hat / Bone Wrist / Brigandine / Power Belt",
+    "Freya: Iron Helm, Lapis Lazuli",
+    "Freya: Ability Up, Level Up",
+    "Quina: Level Up, Millionaire, Clear Headed"
+   ],
+   "backup": "A single Ogre on this screen: kill it (Amarant throws Exploda, Zidane attacks)"
+  },
+  {
+   "disc": 3,
+   "type": "move",
+   "title": "To Oeilvert",
+   "lines": [
+    "Airship; then turn round, past Qu's Marsh and the mountain, round the forest",
+    "Sort items, Gysahl Greens on the footprints",
+    "Chocobo past the airship, through the mountains to Oeilvert",
+    "Moogle on your right outside: shop"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Oeilvert Shop",
+   "lines": [
+    "Sell all Magus Hat, Bronze Helm, Leather Plate, Germinas Boots, Yellow Scarf",
+    "Sell all Chain Plate, Desert Boots, Angel Earrings, Phoenix Pinion, Tent, Butterfly Sword",
+    "Sell gems except Diamond, Aquamarine, Lapis Lazuli",
+    "Buy",
+    "  2 Silver Fork",
+    "  1 Trident",
+    "  1 Magic Racket",
+    "  2 Diamond Gloves",
+    "  1 Judo Uniform",
+    "  1 Mantra Band",
+    "  1 Dark Hat",
+    "  2 Green Beret",
+    "  1-2 Annoyntment",
+    "  ?x Hi-Potion"
+   ],
+   "backup": "Annoyntments: for Trouble in Oeilvert. Hi-Potions: as many as you can"
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Oeilvert menu (split, 1 Ogre killed)",
+   "lines": [
+    "Zidane: Optimize",
+    "# Angel Bless / Green Beret / Bone Wrist / Judo Uniform / Power Belt",
+    "Zidane: Lapis Lazuli",
+    "Freya: Optimize",
+    "# Trident / Lamia's Tiara / Diamond Gloves / Linen Cuirass / Power Belt",
+    "Amarant: Optimize",
+    "# Cat's Claws / Green Beret / Bone Wrist / Brigandine / Rebirth Ring",
+    "Amarant: Lapis Lazuli",
+    "Amarant: Accuracy+, Ability Up, Clear Headed",
+    "Amarant: HP+10% (only if learned)",
+    "Zidane: Accuracy+, -Counter, Clear Headed, -Undead Killer, Bird Killer",
+    "Freya: MP Attack, Bird Killer, -Cover, -Level Up, Clear Headed, Counter",
+    "Freya: -Man Eater (only if she has just 25 stones)"
+   ],
+   "backup": "No Ogre killed yet? Shift+F5: the whole menu comes before the Gaia Gear instead"
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Oeilvert (no Ogre yet)",
+   "lines": [
+    "# No menu here: the full one comes before the Gaia Gear"
+   ],
+   "alt": true,
+   "when": "pick"
+  },
+  {
+   "disc": 3,
+   "type": "move",
+   "title": "Oeilvert",
+   "lines": [
+    "# 2 Ogre kills in total (physicals + Ogre throw); Epitaph: a Soft",
+    "Up the stairs, left: orb switch, back right",
+    "Down the stairs, left",
+    "1x Diamond Sword (left and down)",
+    "South",
+    "1x Power Vest (straight right)",
+    "1x Feather Boots (up the stairs)",
+    "Out left and back in: holograms clockwise from top left, bottom door",
+    "1x Shield Armor (round the circle)",
+    "Top right door: bridge, hold Right > Hologram > Back, hold Left",
+    "Top door (cutscene) > Down to the 4-hologram room > Globe > Right through the first room",
+    "Right (cutscene), up and out (not the elevator), back in",
+    "Menu BEFORE the Gaia Gear chest"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Oeilvert menu 2 (split)",
+   "lines": [
+    "Freya: Optimize",
+    "# Trident / Lamia's Tiara / Diamond Gloves / Shield Armor / Power Belt",
+    "Amarant: Power Vest"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Oeilvert full menu (no split)",
+   "lines": [
+    "Amarant: Optimize",
+    "# Green Beret / Bone Wrist / Power Vest / Rebirth Ring",
+    "Zidane: Optimize",
+    "# Angel Bless / Green Beret / Bone Wrist / Judo Uniform / Power Belt",
+    "Zidane: Lapis Lazuli",
+    "Freya: Optimize",
+    "# Trident / Lamia's Tiara / Diamond Gloves / Shield Armor / Power Belt",
+    "Amarant: Lapis Lazuli",
+    "Amarant: Accuracy+, Ability Up, Clear Headed",
+    "Amarant: HP+10% (only if learned)",
+    "Zidane: Accuracy+, -Counter, Clear Headed, -Undead Killer, Bird Killer",
+    "Freya: MP Attack, Bird Killer, -Cover, -Level Up, Clear Headed, Counter",
+    "Freya: -Man Eater (only if she has just 25 stones)"
+   ],
+   "alt": true,
+   "when": "pick"
+  },
+  {
+   "disc": 3,
+   "type": "move",
+   "title": "Gaia Gear",
+   "lines": [
+    "1x Gaia Gear (chest)",
+    "Out to the elevator: Ark"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "boss",
+   "title": "Ark",
+   "lines": [
+    "Amarant: Throw Silver Forks, the Diamond Sword in round 3",
+    "Zidane & Freya: Attack",
+    "Quina: Hi-Potion"
+   ],
+   "backup": "Everyone but Quina must live (AP). Whirlwind and Boomerang can kill",
+   "preset": "Ark",
+   "hp": [
+    20002
+   ],
+   "hp_names": {
+    "20002": "Ark"
+   },
+   "id": "ark"
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "After Ark",
+   "lines": [
+    "# In this order, BEFORE the Gulug Stone",
+    "Freya: Diamond, Linen Cuirass",
+    "Quina: Optimize",
+    "# Fork / Dark Hat / Egoist's Armlet / Gaia Gear",
+    "Quina: Coral Ring",
+    "Freya: Level Up (only if short on EXP)",
+    "1x Gulug Stone (altar)"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "move",
+   "title": "Desert Palace (Cid)",
+   "lines": [
+    "Right: Hedgehog Pie game (fail it 5 times on purpose: no quick turns)",
+    "Weights on the scales: B, C, D",
+    "Climb the scales: turn the hourglass",
+    "# No Zidane, no Flee: run, or kill (Drakan/Blue Grimlock: Steiner; Red Grimlock: Blizzara x2)"
+   ],
+   "backup": "Carbuncle with Eiko buffers a normal flee"
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Eiko & company",
+   "lines": [
+    "# In this order",
+    "Steiner: Optimize",
+    "# Coral Sword / Cross Helm / Diamond Gloves / Shield Armor / Power Belt",
+    "Steiner: Thunder Gloves, Barbut",
+    "Steiner: Alert"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "move",
+   "title": "Desert Palace candles",
+   "lines": [
+    "Eiko: up the stairs > Left candle, right orb, up > Left (ignore gargoyles) > Up: torch room",
+    "Right door > Round the hall to the stairs > Top candle, out right and down",
+    "Bottom far left candle > Right stairs > Top left candle: into the door",
+    "1x N-Kai Armlet (orb)",
+    "Middle candle > Upstairs: both candles > Back down: bottom candle, final candle",
+    "Left past the moogle: ONLY the right candle > Other side: ONLY the right candle",
+    "Up the new stairs, then menu"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Before Valia Pira",
+   "lines": [
+    "Ether Eiko (only if under 24 MP)",
+    "Ether Vivi (only if under 44 MP)",
+    "Dagger: Optimize",
+    "# Magic Racket / Mantra Band / N-Kai Armlet / Adaman Vest / Rebirth Ring",
+    "Dagger: Leather Wrist",
+    "Vivi: N-Kai Armlet",
+    "Steiner: Optimize",
+    "# Coral Sword / Cross Helm / Diamond Gloves / Shield Armor / Power Belt",
+    "Steiner: Aquamarine",
+    "Steiner: HP+10%, Ability Up",
+    "Dagger: Auto-Life"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "boss",
+   "title": "Valia Pira",
+   "lines": [
+    "Eiko: Carbuncle",
+    "Vivi: Water (all) on your own party",
+    "Open a sub-menu during the animation (holds the battle)",
+    "Vivi: Water (all) on your party again"
+   ],
+   "backup": "Bad ATB on Eiko: wait for his first turn so all four are up",
+   "preset": "Valia Pira",
+   "hp": [
+    12120
+   ],
+   "hp_names": {
+    "12120": "Valia Pira"
+   },
+   "id": "valia_pira"
+  },
+  {
+   "disc": 3,
+   "type": "move",
+   "title": "Back with Zidane",
+   "lines": [
+    "Zidane needs 8 AP before the Red Dragons menu (4 from enemies with Ability Up)",
+    "# Single Ogres on the Hilda Garde screen, or a Garuda at Esto Gaza",
+    "Kuja's room: no party change (cancel)",
+    "Bottom warp > Exit the old guard blocked > Kick the switch, climb down, left",
+    "Blue Narciss: Zidane, Steiner, Vivi, Amarant (wait if you still need a Garuda)"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Esto Gaza Shop",
+   "lines": [
+    "Buy",
+    "  1 Flame Saber",
+    "  1 Octagon Rod",
+    "  3 Rising Sun",
+    "  1 Egoist's Armlet",
+    "Buy 1 Remedy, 11 Hi-Potion, 11 Phoenix Down (only if low)"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "move",
+   "title": "Mount Gulug",
+   "lines": [
+    "Left at the entrance: house",
+    "9693x Gil (bottom right corner inside)",
+    "Right to the well rope, slide down",
+    "Left of the rope: Pull Down x3",
+    "Menu BEFORE the rope (moogle to the right: save if new)"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Before the Red Dragons",
+   "lines": [
+    "Amarant: -Power Vest, Promist Ring",
+    "Vivi: Octagon Rod, Magic Armlet",
+    "Steiner: Optimize",
+    "# Power Belt",
+    "Steiner: Thunder Gloves, Bronze Armor, Iron Helm, Coral Sword",
+    "Zidane: Optimize",
+    "# Angel Bless / Green Beret / Egoist's Armlet / Power Vest / Power Belt",
+    "Zidane: Distract, -MP Attack, -Bird Killer, Devil Killer, -Man Eater, -Clear Headed, Antibody, Level Up",
+    "Steiner: Level Up",
+    "Zidane back row"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "boss",
+   "title": "Red Dragons",
+   "lines": [
+    "Each: 1 Blizzaga + 1 Steiner Attack",
+    "Zidane: Soul Blade on the OTHER dragon (Confuse)",
+    "KO Amarant & Vivi before Steiner finishes the 2nd"
+   ],
+   "backup": "Blizzaga + 1 Rising Sun also works, but can under-damage",
+   "preset": "Red Dragons",
+   "hp": [
+    8000
+   ],
+   "hp_names": {
+    "8000": "Red Dragon"
+   },
+   "id": "red_dragons"
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Before Meltigemini",
+   "lines": [
+    "# Right after the Red Dragons",
+    "Steiner: Optimize",
+    "# Flame Saber / Cross Helm / Diamond Gloves / Shield Armor / Power Belt",
+    "Steiner: Lapis Lazuli, Bronze Gloves",
+    "Zidane: N-Kai Armlet",
+    "Amarant: Optimize",
+    "# Cat's Claws / Green Beret / Egoist's Armlet / Judo Uniform / Power Belt",
+    "Amarant: HP+10%, -Ability Up, Level Up",
+    "Zidane: MP Attack",
+    "Steiner: Accuracy+, Distract, Antibody, Ability Up",
+    "Zidane front row"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "boss",
+   "title": "Meltigemini",
+   "lines": [
+    "Zidane & Steiner: Attack",
+    "Amarant: Throw Rising Suns",
+    "# No AP needed from this fight"
+   ],
+   "backup": "Eiko vs Zorn & Thorn plays itself",
+   "preset": "Meltigemini",
+   "hp": [
+    24348
+   ],
+   "hp_names": {
+    "24348": "Meltigemini"
+   },
+   "id": "meltigemini"
+  },
+  {
+   "disc": 3,
+   "type": "move",
+   "title": "To Ipsen's Castle",
+   "lines": [
+    "Airship party: Zidane, Vivi, Freya, Steiner",
+    "Fly to Ipsen's Castle (north of the western continent)",
+    "Don't change the party after Amarant runs in",
+    "First room: top right door, down to the moogle"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Ipsen's Castle Shop",
+   "lines": [
+    "Buy",
+    "  1 Golden Hairpin",
+    "  1 Diamond Helm",
+    "  1 Gaia Gear",
+    "  2 Venetia Shield",
+    "  1 Jade Armlet",
+    "  1 Red Hat",
+    "# R1 twice for the first page, L1 for the rest"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "move",
+   "title": "Ipsen's Castle",
+   "lines": [
+    "Down the pole, ladder up, round the top, out left",
+    "Door next to you: down the ladder, across, up the next ladder",
+    "Down, up the elevator (Amarant cutscene)",
+    "Four mirrors, then menu before the centre"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Before Taharka",
+   "lines": [
+    "Zidane: Optimize",
+    "# Angel Bless / Golden Hairpin / Jade Armlet / Power Vest / Power Belt",
+    "Zidane: Rune Tooth",
+    "Vivi: Optimize",
+    "# Octagon Rod / Red Hat / Magic Armlet / Gaia Gear / Ribbon",
+    "Freya: Optimize",
+    "# Trident / Diamond Helm / Venetia Shield / Plate Mail / Pumice",
+    "Freya: Diamond, Diamond Gloves",
+    "Steiner: Thunder Gloves",
+    "Steiner: Add Status, -Man Eater, -Devil Killer",
+    "Freya: Accuracy+, Distract, Ability Up, Level Up",
+    "Freya: -Man Eater (only if she has just 26 stones)",
+    "Freya: -Clear Headed (only if it's on)",
+    "Steiner and Freya back row"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "boss",
+   "title": "Taharka",
+   "lines": [
+    "Steiner: Attack until Heat lands (Flame Saber + Add Status)",
+    "Vivi: Firaga, Zidane: Soul Blade (Poison)",
+    "Freya: heal; Zidane, Freya, Steiner must live",
+    "# Zidane may Steal: Orichalcon (rare), Elixir"
+   ],
+   "backup": "Hard to count damage with Poison: don't bother",
+   "preset": "Taharka",
+   "hp": [
+    29816,
+    29186
+   ],
+   "hp_names": {
+    "29816": "Taharka",
+    "29186": "Taharka"
+   },
+   "id": "taharka"
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "After Taharka",
+   "lines": [
+    "# At the entrance screen, before rejoining the others",
+    "Vivi: Mage Staff, -All",
+    "Zidane: -Power Belt",
+    "Zidane: Optimize",
+    "# Angel Bless or Orichalcon / Golden Hairpin / Jade Armlet / Power Vest / Ribbon",
+    "Zidane: Gaia Gear",
+    "# Steiner in this order:",
+    "Steiner: Diamond Gloves, Iron Helm, Coral Sword, Coral Ring",
+    "Freya: -Power Belt",
+    "Steiner: Level Up",
+    "Zidane: -Alert, -Ability Up, -Antibody, Counter, Auto-Regen"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "move",
+   "title": "Earth Shrine",
+   "lines": [
+    "Back in: fall down the top pit, talk to Amarant, leave",
+    "Party: Zidane, Amarant, Vivi, Quina",
+    "Earth Shrine: jump at the (!)s, place the mirror"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "boss",
+   "title": "Earth Guardian",
+   "lines": [
+    "Zidane: Attack (Quina defends or heals)",
+    "After 15,567 damage: Quina Eats it"
+   ],
+   "backup": "Firaga and Double Slash are the only real threats",
+   "preset": "Earth Guardian",
+   "hp": [
+    20756
+   ],
+   "hp_names": {
+    "20756": "Earth Guardian"
+   },
+   "id": "earth_guardian"
+  },
+  {
+   "disc": 3,
+   "type": "move",
+   "title": "Terra",
+   "lines": [
+    "Airship party: Zidane, Dagger, Eiko, Quina",
+    "Fly to the shimmering isle",
+    "Terra: cancel the party, right down the slope > Genome > Up > Follow, cross the bridge",
+    "First net: left, jump the gap, climb down",
+    "1x Demon's Vest (chest at the bottom)",
+    "Menu BEFORE the FMV where Garnet collapses"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Terra entrance",
+   "lines": [
+    "Quina: -All",
+    "Eiko: -Wrist, -Armor",
+    "Dagger: -Armor, -Hat, Feather Boots",
+    "Eiko: Multina Racket"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "move",
+   "title": "Bran Bal",
+   "lines": [
+    "Party: anyone for Garnet's spot",
+    "Left: inn > Zidane: door straight north > Right, down the stairs",
+    "1x Elixir (hidden (!) straight down)",
+    "Mikoto > Eiko: back of the inn",
+    "1x Elixir (chest at the back of the inn)",
+    "1x Angel Earrings (hidden (!) by the pool, right)",
+    "Right: small shop",
+    "1x Wing Edge (chest), then the moogle"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Bran Bal Shop",
+   "lines": [
+    "Sell all Magician Shoes, Angel Earrings",
+    "Buy 2 Coronet"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Bran Bal: Orichalcon",
+   "lines": [
+    "Buy 1 Orichalcon"
+   ],
+   "when": "Orichalcon < 1"
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Pandemonium (Zidane alone)",
+   "lines": [
+    "# Down-left, the glowing gate, Mikoto: menu as soon as you have Zidane",
+    "Zidane: Optimize",
+    "# Orichalcon / Coronet / Egoist's Armlet / Demon's Vest / Ribbon",
+    "Zidane: Pumice, Power Vest",
+    "Zidane: -Counter, Level Up, -Devil Killer, Bird Killer"
+   ],
+   "backup": "You Are Not Alone: three fights back to back, no saving"
+  },
+  {
+   "disc": 3,
+   "type": "boss",
+   "title": "Amdusias",
+   "lines": [
+    "Wait for his first turn; he flies up",
+    "Freya arrives: Zidane attacks",
+    "Amarant arrives: KO Zidane",
+    "Amarant: Throw Wing Edge (+ Freya attack if needed)"
+   ],
+   "backup": "Keep reviving Freya and Amarant until he lands",
+   "preset": "Amdusias",
+   "hp": [
+    5463
+   ],
+   "hp_names": {
+    "5463": "Amdusias"
+   },
+   "id": "amdusias"
+  },
+  {
+   "disc": 3,
+   "type": "boss",
+   "title": "Abadon",
+   "lines": [
+    "Steiner & Quina: Change Row, wait for 2 Abadon turns",
+    "Steiner hit: Elixir (Quina throws, Steiner defends)",
+    "Zidane arrives: 2 Zidane attacks + 1 Steiner attack",
+    "Don't kill him until Quina is down (EXP)"
+   ],
+   "backup": "High Wind hits everyone hard",
+   "preset": "Abadon",
+   "hp": [
+    10926
+   ],
+   "hp_names": {
+    "10926": "Abadon"
+   },
+   "id": "abadon"
+  },
+  {
+   "disc": 3,
+   "type": "boss",
+   "title": "Shell Dragon",
+   "lines": [
+    "Zidane into yellow HP: Garnet arrives and heals him",
+    "@Lv Zidane",
+    "  Lv 28: 277 or less, Lv 29: 289, Lv 30: 319",
+    "  Charge: nothing 588-1092, Defend 294-526",
+    "  Flee 882-1638, Defend+Flee 441-819; Earth Shake 420-600",
+    "Then 4 Zidane attacks; don't end it with Garnet alive"
+   ],
+   "backup": "Pause and do the maths. Smash leaves him on 1 HP: safe to wait for",
+   "preset": "Shell Dragon",
+   "hp": [
+    10921
+   ],
+   "hp_names": {
+    "10921": "Shell Dragon"
+   },
+   "id": "shell_dragon"
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Pandemonium moogle",
+   "lines": [
+    "Heal Zidane to full",
+    "Dagger: -Feather Boots",
+    "# Amdusias screen: party Zidane, Freya, Steiner, Amarant"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Pandemonium equip & shop",
+   "lines": [
+    "# Before shopping:",
+    "Freya: Partisan, -Diamond Helm, -Plate Mail, -Power Belt",
+    "Zidane: -Egoist's Armlet",
+    "Amarant: Optimize",
+    "# Cat's Claws / Coronet / Egoist's Armlet / Demon's Vest / Power Belt",
+    "Amarant: -Egoist's Armlet",
+    "Steiner: Optimize",
+    "# Flame Saber / Diamond Helm / Venetia Shield / Shield Armor / Ribbon",
+    "Steiner: Broadsword",
+    "Freya front row",
+    "Sort items",
+    "Sell all except: Potion, Hi-Potion, Phoenix Down, Ether, Elixir, Remedy, Soft, Annoyntment, Eye Drops, Echo Screen, Antidote, Vaccine, Magic Tag, Gysahl Greens, Glass Armlet, N-Kai Armlet, Jade Armlet, Diamond Gloves, Mantra Band, Lamia's Tiara, Barbut, Mythril Helm, Cross Helm, Diamond, Rebirth Ring, Power Belt",
+    "# Keep just 1 Lamia's Tiara; sell every weapon and every top",
+    "Buy",
+    "  1 Avenger",
+    "  1 Holy Lance",
+    "  1 Defender",
+    "  1 Minerva's Plate",
+    "  1 Platina Armor",
+    "  51 Hi-Potion",
+    "  ?x Phoenix Down",
+    "Zidane: Optimize",
+    "# Orichalcon / Coronet / Jade Armlet / Power Vest / Power Belt",
+    "Freya: Optimize",
+    "# Holy Lance / Cross Helm / Diamond Gloves / Minerva's Plate / Rebirth Ring",
+    "Steiner: Optimize",
+    "# Defender / Diamond Helm / Venetia Shield / Platina Armor / Ribbon",
+    "Amarant: Optimize",
+    "# Avenger / Coronet / N-Kai Armlet / Demon's Vest / Power Belt",
+    "Amarant: Glass Armlet",
+    "Zidane: Glass Armlet",
+    "Freya: Lamia's Tiara",
+    "Freya: Man Eater, -Ability Up, -Level Up, Auto-Life",
+    "Zidane: Counter, Man Eater",
+    "Steiner: Man Eater, Counter, Accuracy+",
+    "Amarant: MP Attack, Bird Killer, Man Eater, Locomotion, -Clear Headed, Counter"
+   ],
+   "backup": "Phoenix Downs: as many as you can"
+  },
+  {
+   "disc": 3,
+   "type": "move",
+   "title": "Pandemonium",
+   "lines": [
+    "Left: Pillar Maze; switch, then the path (pause at the first point for the lights)",
+    "Cross the bridge before time runs out",
+    "Eyeball switch: 4",
+    "Elevators, then straight down: bottom left teleporter",
+    "# Paths: see the guide's pictures"
+   ]
+  },
+  {
+   "disc": 3,
+   "type": "boss",
+   "title": "Silver Dragon",
+   "lines": [
+    "Everyone: Attack (Amarant can throw a Wing Edge)"
+   ],
+   "backup": "Steiner MUST live (AP). Shockwave hits everyone",
+   "preset": "Silver Dragon",
+   "hp": [
+    24055
+   ],
+   "hp_names": {
+    "24055": "Silver Dragon"
+   },
+   "id": "silver_dragon"
+  },
+  {
+   "disc": 3,
+   "type": "boss",
+   "title": "Garland",
+   "lines": [
+    "Freya, Zidane, Amarant: Attack",
+    "2+ in yellow HP: Steiner Charge!",
+    "Revive the fallen (into yellow for Charge!)"
+   ],
+   "backup": "No group attacks",
+   "preset": "Garland",
+   "hp": [
+    47028,
+    40728
+   ],
+   "hp_names": {
+    "47028": "Garland",
+    "40728": "Garland"
+   },
+   "id": "garland"
+  },
+  {
+   "disc": 3,
+   "type": "boss",
+   "title": "Kuja",
+   "lines": [
+    "Freya, Zidane, Amarant: Attack",
+    "2+ in yellow HP: Steiner Charge!",
+    "Revive the fallen (into yellow for Charge!)"
+   ],
+   "backup": "Then round the stairs, rainbow road, Garnet: end of Disc 3",
+   "preset": "Kuja",
+   "hp": [
+    42382
+   ],
+   "hp_names": {
+    "42382": "Kuja"
+   },
+   "id": "kuja"
+  },
+  {
+   "disc": 4,
+   "type": "boss",
+   "title": "Nova Dragon",
+   "lines": [
+    "# Party: Zidane, Freya, Steiner, Amarant (Freya has Auto-Life)",
+    "Opens with Tidal Wave or Aerial Slash: Amarant Wing Edge, Freya Luna",
+    "Opens with Shockwave or Telekinesis: Steiner Charge! (can't be countered)",
+    "  Zidane, Freya, Amarant: careful attacks (he counters)"
+   ],
+   "backup": "Shockwave is a very strong group attack",
+   "preset": "Nova Dragon",
+   "hp": [
+    54941
+   ],
+   "hp_names": {
+    "54941": "Nova Dragon"
+   },
+   "id": "nova_dragon"
+  },
+  {
+   "disc": 4,
+   "type": "menu",
+   "title": "Before Maliris",
+   "lines": [
+    "Zidane: -Power Belt",
+    "Amarant: Optimize",
+    "# Avenger / Coronet / Jade Armlet / Demon's Vest / Power Belt",
+    "Steiner: Diamond, Shield Armor, Diamond Gloves",
+    "Freya: Optimize",
+    "# Holy Lance / Cross Helm / Venetia Shield / Minerva's Plate / Rebirth Ring",
+    "Zidane: Optimize",
+    "# Orichalcon / Coronet / N-Kai Armlet / Power Vest / Ribbon",
+    "Zidane: -Bird Killer, Alert, -Counter, Protect Girls, Body Temp, -Man Eater, Devil Killer",
+    "Freya: -Distract, -Bird Killer, Body Temp, Ability Up, Devil Killer",
+    "Steiner: Devil Killer, Body Temp, -Ability Up",
+    "Amarant: -Counter, Body Temp, Devil Killer"
+   ]
+  },
+  {
+   "disc": 4,
+   "type": "move",
+   "title": "Memoria",
+   "lines": [
+    "Random fight on the way: KO everyone not in yellow HP (not Zidane)",
+    "# Then Phoenix Down them outside battle: yellow HP for Charge!",
+    "Up two screens, round the circle, up the zigzag steps",
+    "1x The Tower (square nook at the top)",
+    "Curved path: menu"
+   ]
+  },
+  {
+   "disc": 4,
+   "type": "menu",
+   "title": "The Tower",
+   "lines": [
+    "Zidane: Optimize",
+    "# The Tower / Coronet / N-Kai Armlet / Power Vest / Ribbon"
+   ]
+  },
+  {
+   "disc": 4,
+   "type": "boss",
+   "title": "Maliris",
+   "lines": [
+    "Steiner: Charge! first",
+    "Freya, Zidane, Amarant: Attack",
+    "Count damage!"
+   ],
+   "backup": "Raining Swords at the end: no Auto-Life left? Freya Jumps before the last hit",
+   "preset": "Maliris",
+   "hp": [
+    59492,
+    59497
+   ],
+   "hp_names": {
+    "59492": "Maliris",
+    "59497": "Maliris"
+   },
+   "id": "maliris"
+  },
+  {
+   "disc": 4,
+   "type": "menu",
+   "title": "After Maliris",
+   "lines": [
+    "Revive everyone",
+    "Heal Zidane to full",
+    "Ether whoever really needs it (Steiner: 10 MP per Charge!)"
+   ],
+   "backup": "Ethers are limited"
+  },
+  {
+   "disc": 4,
+   "type": "move",
+   "title": "Memoria (Alexandria)",
+   "lines": [
+    "Round the curve > Right (Alexandria cutscene), right > Round the curve",
+    "Right to the bridge (cutscene), up the stairs",
+    "1x Rune Claws (hidden (!), left after the text)"
+   ]
+  },
+  {
+   "disc": 4,
+   "type": "menu",
+   "title": "Before Tiamat",
+   "lines": [
+    "Amarant: Optimize",
+    "# Rune Claws / Coronet / Jade Armlet / Demon's Vest / Power Belt",
+    "Freya: Barbut",
+    "Freya: -Man Eater, -Devil Killer, Dragon Killer",
+    "Heal everyone to full"
+   ]
+  },
+  {
+   "disc": 4,
+   "type": "boss",
+   "title": "Tiamat",
+   "lines": [
+    "Freya: Attack (by far the most damage)",
+    "Steiner: Charge! (with Freya in them)",
+    "Zidane: Attack",
+    "Amarant: Throw the Orichalcon, then Attack"
+   ],
+   "backup": "Floated? Don't attack with that one until it wears off (Snort)",
+   "preset": "Tiamat",
+   "hp": [
+    59494
+   ],
+   "hp_names": {
+    "59494": "Tiamat"
+   },
+   "id": "tiamat"
+  },
+  {
+   "disc": 4,
+   "type": "move",
+   "title": "After Tiamat",
+   "lines": [
+    "Revive, heal Zidane to full, Ether (Steiner first); S/F/A back into yellow",
+    "Up, hold Up through the long stairs > Right, down, left",
+    "Hold Left, up the curved stairs",
+    "Gaia/Terra screen: just hold Up",
+    "Waterfall > Quina > Up the stairs: menu"
+   ]
+  },
+  {
+   "disc": 4,
+   "type": "menu",
+   "title": "Before Kraken",
+   "lines": [
+    "Freya: Mythril Helm, Diamond Gloves, Power Belt",
+    "Zidane: Rebirth Ring, Mantra Band",
+    "Zidane: -Auto-Regen, -Protect Girls, -Alert, Ability Up, Auto-Life",
+    "Freya: Auto-Float, Devil Killer, -Ability Up, Antibody, Distract",
+    "Steiner: -HP+10%, Auto-Float"
+   ]
+  },
+  {
+   "disc": 4,
+   "type": "boss",
+   "title": "Kraken",
+   "lines": [
+    "Tentacle 1: Zidane & Amarant; tentacle 2: Freya & Steiner (Freya last)",
+    "Body: Steiner Charge! (he counters hard)",
+    "Right after the last tentacle: Zidane Attack, Steiner Charge!, Amarant Attack"
+   ],
+   "backup": "Waterga only hits Zidane and Amarant",
+   "preset": "Kraken",
+   "hp": [
+    55536
+   ],
+   "hp_names": {
+    "55536": "Kraken"
+   },
+   "id": "kraken"
+  },
+  {
+   "disc": 4,
+   "type": "menu",
+   "title": "After Kraken",
+   "lines": [
+    "Revive the fallen, give them some MP",
+    "Don't heal anyone out of yellow HP",
+    "Freya: Venetia Shield (only if Auto-Float isn't learned)",
+    "Steiner: Venetia Shield (only if Auto-Float isn't learned)",
+    "# Up the stairs, round the clock, left door, ladder: Lich"
+   ]
+  },
+  {
+   "disc": 4,
+   "type": "boss",
+   "title": "Lich",
+   "lines": [
+    "Steiner: Charge!",
+    "Everyone else: Attack (no counters)",
+    "Keep Freya alive (9,999 with Holy Lance + Mythril Helm)"
+   ],
+   "preset": "Lich",
+   "hp": [
+    58554
+   ],
+   "hp_names": {
+    "58554": "Lich"
+   },
+   "id": "lich"
+  },
+  {
+   "disc": 4,
+   "type": "menu",
+   "title": "After Lich",
+   "lines": [
+    "1x Excalibur II (hidden (!), right pillar)",
+    "Revive, heal Zidane, Ether the party",
+    "Zidane: Optimize",
+    "# The Tower / Coronet / N-Kai Armlet / Power Vest / Rebirth Ring",
+    "Freya: Optimize",
+    "# Holy Lance / Cross Helm / Venetia Shield / Minerva's Plate / Power Belt",
+    "Freya: -Venetia Shield",
+    "Steiner: Optimize",
+    "# Excalibur II / Diamond Helm / Venetia Shield / Platina Armor / Ribbon",
+    "Steiner: Mythril Helm",
+    "Zidane back row"
+   ]
+  },
+  {
+   "disc": 4,
+   "type": "move",
+   "title": "Crystal World",
+   "lines": [
+    "Up, then hold Up to Crystal World",
+    "Hold Up on the first screen > Hold Left, out left-down",
+    "Down round the curve, out upper left",
+    "Save point: menu (and save if new)"
+   ]
+  },
+  {
+   "disc": 4,
+   "type": "menu",
+   "title": "Before Deathguise",
+   "lines": [
+    "Zidane: -Ability Up, -Body Temp, -MP Attack, -Devil Killer, -Accuracy+, HP+20%, Auto-Regen",
+    "Freya: -Auto-Float, -Devil Killer, -Distract, Bird Killer",
+    "Steiner: -Auto-Float, HP+10%, Counter",
+    "Heal everyone to full"
+   ]
+  },
+  {
+   "disc": 4,
+   "type": "boss",
+   "title": "Deathguise",
+   "lines": [
+    "Steiner: Attack (6 hits with Excalibur II)",
+    "Zidane: revive / Elixir"
+   ],
+   "backup": "See the guide's Deathguise appendix if new",
+   "preset": "Deathguise",
+   "hp": [
+    55535
+   ],
+   "hp_names": {
+    "55535": "Deathguise"
+   },
+   "lv5": [
+    "zidane",
+    "steiner",
+    "freya",
+    "amarant"
+   ],
+   "id": "deathguise"
+  },
+  {
+   "disc": 4,
+   "type": "menu",
+   "title": "Before Trance Kuja",
+   "lines": [
+    "Zidane: Pumice Piece",
+    "Freya: Rebirth Ring, Shield Armor",
+    "Freya: Auto-Life",
+    "Zidane: -Auto-Regen, Accuracy+, Bird Killer, MP Attack",
+    "Ether the party; heal Zidane to full only if Steiner is in yellow",
+    "Zidane front row"
+   ],
+   "backup": "New? Go back one screen and save again"
+  },
+  {
+   "disc": 4,
+   "type": "boss",
+   "title": "Trance Kuja",
+   "lines": [
+    "1 attack each: Zidane, Freya, Amarant",
+    "Then ONLY Steiner Charge! (unless an attack surely ends it)"
+   ],
+   "backup": "Past a damage threshold he counters with 35x level damage to all",
+   "preset": "Trance Kuja",
+   "hp": [
+    55535
+   ],
+   "hp_names": {
+    "55535": "Trance Kuja"
+   },
+   "id": "trance_kuja"
+  },
+  {
+   "disc": 4,
+   "type": "boss",
+   "title": "Necron",
+   "lines": [
+    "Freya: Jump skip over Grand Cross and Neutron Ring",
+    "Revive Steiner, then Zidane",
+    "Protect cast: Freya attacks once or waits for the 3rd Blue Shockwave, then a 2nd Jump skip"
+   ],
+   "backup": "See Muttski's Necron video",
+   "preset": "Necron",
+   "hp": [
+    54100
+   ],
+   "hp_names": {
+    "54100": "Necron"
+   },
+   "id": "necron"
+  }
+ ]
+}

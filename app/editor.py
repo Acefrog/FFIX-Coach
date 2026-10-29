@@ -27,7 +27,6 @@ from coach import parse_when, when_label, when_text, step_numbers, OPS, AP_OPS, 
 
 from paths import BACKUPS, LEARNED, write_atomic  # noqa: E402
 KEEP_BACKUPS = 30
-LIMIT = 60                     # longer lines wrap on the coach panel
 CHARS = ["zidane", "vivi", "garnet", "steiner", "freya", "quina", "eiko", "amarant"]
 KIND_NAME = {"move": "Walk", "menu": "Menu", "boss": "Fight"}
 KIND_OF = {v: k for k, v in KIND_NAME.items()}
@@ -170,10 +169,6 @@ def find_problems(route: dict) -> list[tuple[int | None, str | None, str]]:
         lines = s.get("lines", [])
         if not any(l.strip() for l in lines):
             out.append((i, None, f"{name}: no {'actions' if s.get('type') == 'boss' else 'instructions'}"))
-        for l in lines:
-            if len(l) > LIMIT and not l.strip().startswith("#"):
-                out.append((i, None, f"{name}: line over {LIMIT} characters"))
-                break
         if s.get("type") != "boss":
             for l in expand_headers(lines):
                 info = classify(l)
@@ -1470,9 +1465,6 @@ def run() -> int:
                     info = classify(l)
                     if info.kind != "note" and info.problem:
                         msgs.append(f"Underlined \"{l[:28]}\": {info.problem}")
-            long = [l for l in lines if len(l) > LIMIT and not l.strip().startswith("#")]
-            if long:
-                msgs.append(f"{len(long)} line(s) over {LIMIT} characters will wrap on the panel: " + long[0][:40] + "…")
             label.configure(text="\n".join(msgs[:3]))
 
         def _live(self, widget, apply):
