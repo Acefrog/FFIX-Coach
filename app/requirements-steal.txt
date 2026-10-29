@@ -1,0 +1,8 @@
+# Text recognition for the steal check (Windows 10/11).
+# Install with:  pip install -r requirements-steal.txt
+winrt-runtime
+winrt-Windows.Foundation
+winrt-Windows.Globalization
+winrt-Windows.Graphics.Imaging
+winrt-Windows.Media.Ocr
+winrt-Windows.Storage.Streams

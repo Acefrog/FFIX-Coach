@@ -1,0 +1,26 @@
+[
+ {
+  "name": "Steiner & Bomb",
+  "disc": 1,
+  "hp": [
+   162,
+   38
+  ],
+  "hp_names": {
+   "162": "Steiner",
+   "38": "Bomb"
+  },
+  "fights": 3
+ },
+ {
+  "name": "Prison Cage",
+  "disc": 1,
+  "hp": [
+   533
+  ],
+  "hp_names": {
+   "533": "Prison Cage 513 Prison Cage"
+  },
+  "fights": 2
+ }
+]

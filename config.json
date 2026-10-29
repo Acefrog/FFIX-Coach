@@ -1,0 +1,322 @@
+{
+  "process_name": "duckstation",
+  "ram_base": null,
+  "poll_ms": 100,
+  "keys": {
+    "prev_turn": "F5",
+    "next_turn": "F6",
+    "prev_step": "F7",
+    "next_step": "F8",
+    "skip_back": "Shift+F7",
+    "skip_forward": "Shift+F8",
+    "switch_branch": "Shift+F5",
+    "toggle_overlay": "F9",
+    "quit": "F10"
+  },
+  "overlay": {
+    "anchor": "top-right",
+    "width": 380,
+    "margin": 16,
+    "opacity": 0.88,
+    "font": "Segoe UI",
+    "font_size": 11,
+    "show_next": false
+  },
+  "addresses": {
+    "battle_base": "0x108F24",
+    "slot_stride": "0xD0",
+    "hp_off": 0,
+    "atb_off": 4,
+    "hp_width": 2,
+    "atb_width": 2,
+    "party_slots": {
+      "zidane": 0
+    },
+    "igt": "0x8B02C",
+    "encounter_field": "0x7954F",
+    "battle_module": "0x1044B0",
+    "battle_sig_len": 64,
+    "field_id": "0x079554",
+    "field_id_width": 2,
+    "battle_flags": [
+      {
+        "addr": "0x0084BB",
+        "field": 0,
+        "battle": 128
+      },
+      {
+        "addr": "0x0A9202",
+        "field": 16,
+        "battle": 66
+      },
+      {
+        "addr": "0x0AB9EE",
+        "field": 64,
+        "battle": 99
+      },
+      {
+        "addr": "0x0AE368",
+        "field": 28,
+        "battle": 81
+      },
+      {
+        "addr": "0x0B0B93",
+        "field": 0,
+        "battle": 140
+      },
+      {
+        "addr": "0x0B33F2",
+        "field": 0,
+        "battle": 66
+      },
+      {
+        "addr": "0x0B5C6C",
+        "field": 20,
+        "battle": 117
+      },
+      {
+        "addr": "0x0B840F",
+        "field": 174,
+        "battle": 140
+      },
+      {
+        "addr": "0x0BAC81",
+        "field": 80,
+        "battle": 8
+      },
+      {
+        "addr": "0x0BD498",
+        "field": 0,
+        "battle": 1
+      },
+      {
+        "addr": "0x0BFC84",
+        "field": 236,
+        "battle": 16
+      },
+      {
+        "addr": "0x0C24CD",
+        "field": 24,
+        "battle": 0
+      },
+      {
+        "addr": "0x0C4D28",
+        "field": 14,
+        "battle": 4
+      },
+      {
+        "addr": "0x0C74AD",
+        "field": 157,
+        "battle": 0
+      },
+      {
+        "addr": "0x0C9C5F",
+        "field": 0,
+        "battle": 162
+      },
+      {
+        "addr": "0x1E3127",
+        "field": 0,
+        "battle": 194
+      }
+    ],
+    "party_hp_base": "0x098666",
+    "party_stride": "0x4A8",
+    "chars": {
+      "zidane": {
+        "exp": "0x08B298",
+        "level": "0x08B297"
+      },
+      "vivi": {
+        "exp": "0x08B328",
+        "level": "0x08B327"
+      },
+      "garnet": {
+        "exp": "0x08B3B8",
+        "level": "0x08B3B7"
+      },
+      "steiner": {
+        "exp": "0x08B448",
+        "level": "0x08B447"
+      },
+      "freya": {
+        "exp": "0x08B4D8",
+        "level": "0x08B4D7"
+      },
+      "quina": {
+        "exp": "0x08B568",
+        "level": "0x08B567"
+      },
+      "eiko": {
+        "exp": "0x08B5F8",
+        "level": "0x08B5F7"
+      },
+      "amarant": {
+        "exp": "0x08B688",
+        "level": "0x08B687"
+      }
+    },
+    "menu_flags": [
+      {
+        "addr": "0x00E2DF",
+        "closed": 0,
+        "open": 255
+      },
+      {
+        "addr": "0x06815B",
+        "closed": 176,
+        "open": 240
+      },
+      {
+        "addr": "0x077DF7",
+        "closed": 0,
+        "open": 128
+      },
+      {
+        "addr": "0x08B009",
+        "closed": 2,
+        "open": 0
+      },
+      {
+        "addr": "0x08CAEA",
+        "closed": 16,
+        "open": 8
+      },
+      {
+        "addr": "0x08CDF6",
+        "closed": 16,
+        "open": 8
+      },
+      {
+        "addr": "0x08D032",
+        "closed": 16,
+        "open": 8
+      },
+      {
+        "addr": "0x08FB56",
+        "closed": 8,
+        "open": 9
+      },
+      {
+        "addr": "0x090B1A",
+        "closed": 16,
+        "open": 9
+      },
+      {
+        "addr": "0x091264",
+        "closed": 84,
+        "open": 96
+      },
+      {
+        "addr": "0x1FFE43",
+        "closed": 128,
+        "open": 0
+      },
+      {
+        "addr": "0x1FFEB7",
+        "closed": 0,
+        "open": 128
+      },
+      {
+        "addr": "0x1FFEF7",
+        "closed": 0,
+        "open": 128
+      },
+      {
+        "addr": "0x1FFF12",
+        "closed": 0,
+        "open": 1
+      },
+      {
+        "addr": "0x1FFF1F",
+        "closed": 0,
+        "open": 128
+      },
+      {
+        "addr": "0x1FFF3C",
+        "closed": 2,
+        "open": 1
+      }
+    ],
+    "ability_bits": {
+      "Protect Girls": [
+        128,
+        6
+      ]
+    },
+    "inventory": "0x08B7C4",
+    "inventory_entries": 16,
+    "inventory_id_first": true,
+    "equip_off": 45,
+    "row": {
+      "off": 41,
+      "bit": 1,
+      "back": 0
+    },
+    "gil": "0x08B7B0",
+    "ap": {
+      "zidane:Flee": {
+        "addr": "0x08B2E4",
+        "max": 40,
+        "width": 1
+      },
+      "zidane:Protect Girls": {
+        "addr": "0x08B303",
+        "max": 35,
+        "width": 1
+      }
+    },
+    "config": {
+      "Cursor": {
+        "addr": "0x08B024",
+        "mask": 4,
+        "values": {
+          "Memory": 4
+        }
+      },
+      "Battle Camera": {
+        "addr": "0x08B024",
+        "mask": 16,
+        "values": {
+          "Fixed": 16
+        }
+      },
+      "Movement": {
+        "addr": "0x08B024",
+        "mask": 64,
+        "values": {
+          "Run": 64
+        }
+      },
+      "Battle Speed": {
+        "addr": "0x08B025",
+        "mask": 3,
+        "values": {
+          "Fast": 2
+        }
+      },
+      "Field Message": {
+        "addr": "0x08B025",
+        "mask": 192,
+        "values": {
+          "Fast": 128
+        }
+      },
+      "Window Color": {
+        "addr": "0x08B026",
+        "mask": 4,
+        "values": {
+          "Classic": 4
+        }
+      },
+      "Target Window": {
+        "addr": "0x08B026",
+        "mask": 8,
+        "values": {
+          "Always": 8
+        }
+      }
+    }
+  },
+  "route": "Acefrog"
+}
