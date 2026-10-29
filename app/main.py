@@ -17,6 +17,7 @@ from pathlib import Path
 from coach import Coach, View, load_route
 from memory import Addresses, DuckStationRam, FakeRam, MemoryError_, read_state
 
+import routes
 from paths import CONFIG, LEARNED, STOP_FILE, log
 
 
@@ -118,6 +119,310 @@ def console_print(view: View) -> None:
             print("     " + line)
 
 
+def key_actions(coach: Coach, cfg: dict):
+    """The hotkeys from config.json: ({key: what it does}, hide/show key, quit key)."""
+    keys = cfg.get("keys", {})
+    actions = {
+        keys.get("prev_turn", "F5"): coach.prev_turn,
+        keys.get("next_turn", "F6"): coach.next_turn,
+        keys.get("prev_step", "F7"): coach.prev_step,
+        keys.get("next_step", "F8"): coach.next_step,
+        keys.get("skip_back", "Shift+F7"): lambda: coach.skip(-1),
+        keys.get("skip_forward", "Shift+F8"): lambda: coach.skip(1),
+        keys.get("switch_branch", "Shift+F5"): coach.switch_branch,
+    }
+    return actions, keys.get("toggle_overlay", "F9"), keys.get("quit", "F10")
+
+
+class Runner:
+    """One poll of the game: the Stop button and keys, the screen reader, edits to the
+    route, the coach itself, the logs and the panel.
+
+    Everything it uses is handed in (the game's memory, the hotkeys, where the stop
+    file and logs go), so it can be run in tests without DuckStation, a window or the
+    real files. main() builds one and calls tick() every poll."""
+
+    def __init__(self, coach: Coach, ram, addrs: Addresses, cfg: dict, route_name: str, *,
+                 sim: Simulator | None = None, watcher=None, hotkeys=None, debug: bool = False,
+                 simulate: bool = False, logs=log, stop_file: Path = STOP_FILE, config_path: Path = CONFIG,
+                 watch_files: bool | None = None):
+        self.coach, self.ram, self.addrs, self.cfg = coach, ram, addrs, cfg
+        self.sim, self.watcher, self.hotkeys = sim, watcher, hotkeys
+        self.debug, self.simulate = debug, simulate
+        self.logs, self.stop_file, self.config_path = logs, stop_file, config_path
+        self.watch_files = sim is None if watch_files is None else watch_files   # route and config edits
+        self.overlay = None                      # the panel, once main() has made it
+        self.stopped = False
+        self.actions, self.toggle_key, self.quit_key = key_actions(coach, cfg)
+
+        self.route_name = route_name
+        self.route_path = routes.path(route_name)
+        self.route_mtime = self.route_path.stat().st_mtime if self.route_path.exists() else 0.0
+        self.cfg_mtime = config_path.stat().st_mtime if config_path.exists() else 0.0
+        self.last_route_check = time.monotonic()
+
+        self.lost_since = 0.0                    # when the game went away (0: it's there)
+        self.last_try = 0.0                      # last time it was looked for again
+        self.last_view: View | None = None
+        self.last_debug = 0.0
+        self.last_msg = ""
+        self.last_log = 0.0
+        self.last_resets = coach.resets
+        self.run_started = False
+        self.last_bag = None
+        self.last_eq = None
+
+    # -- the poll ---------------------------------------------------------------
+    def tick(self, render) -> bool:
+        """Read the game once and update the panel. False when it's time to quit."""
+        coach, watcher = self.coach, self.watcher
+        if self.stop_file.exists():              # "Stop coach" in the launcher (game there or not)
+            try:
+                self.stop_file.unlink()
+            except OSError:
+                pass
+            print("Stopped from the launcher.")
+            self.stopped = True
+            return False
+        try:
+            if self.sim:
+                self.sim.tick()
+            state = read_state(self.ram, self.addrs)
+            self.lost_since = 0.0
+        except MemoryError_ as e:
+            if self.sim:
+                print(f"Lost the game: {e}")
+                return False
+            if not self.lost_since:
+                self.lost_since = time.monotonic()
+                print(f"Lost the game ({e}); waiting for it to come back...")
+            if not self.handle_keys():
+                return False
+            self.reconnect()
+            return True                          # keep waiting (F10 quits)
+        if not self.handle_keys():
+            return False
+        if watcher and self.debug and time.monotonic() - self.last_debug > 1 and watcher.active.is_set():
+            print(f"screen text: {watcher.last_text!r}" + (f"  error: {watcher.last_error}" if watcher.last_error else ""))
+        if watcher:
+            for kind, item in watcher.poll():
+                if kind == "got":
+                    coach.pickup_event(item)
+                    print(f"Pickup seen on screen: {item}")
+                    continue
+                coach.steal_event(kind, item)
+                if kind == "stole":
+                    print(f"Steal seen on screen: {item}")
+        if self.watch_files:
+            self.check_route_file()
+        view = coach.update(state)
+        if coach.events:
+            self.log_run(coach.events)
+            coach.events.clear()
+        if coach.resets != self.last_resets:
+            self.last_resets = coach.resets
+            print("Game reset seen: back to the start of the route, encounters cleared.")
+        self.log_bag(state)
+        self.log_equips(state)
+        if coach.in_battle and time.monotonic() - self.last_log >= 1.0:
+            self.last_log = time.monotonic()
+            self.log_fight(state)
+        if self.debug and coach.message != self.last_msg:
+            self.last_msg = coach.message
+            if coach.message:
+                print("coach: " + coach.message)
+        if watcher:
+            if coach.wants_steal_check():
+                watcher.set_active(True, full=False)       # battle message at the top
+            elif coach.wants_pickup_check():
+                watcher.set_active(True, full=True)        # "Received ..." can show anywhere
+            else:
+                watcher.set_active(False)
+        if view != self.last_view:
+            render(view)
+            self.last_view = view
+        if self.debug and time.monotonic() - self.last_debug > 1:
+            self.last_debug = time.monotonic()
+            fp = coach.learned.battle_fp
+            check = ("off" if coach.learned.data.get("fp_unusable") else
+                     "learning" if fp is None else
+                     "match" if state.battle_sig == fp else "no match")
+            print(f"enemyHP={state.enemy_hp} enemyATB={state.enemy_atb} "
+                  f"partyATB={state.party_atb} partyHP={state.party_hp_slots} igt={state.igt} "
+                  f"screen={state.field_id} encounters={'yes' if state.encounters_possible else 'no'} "
+                  f"battle-code={check} in_battle={coach.in_battle}")
+            if coach.in_battle:
+                print(f"  enemies (slot:first>now=shown [A=in fight, S=hidden 10k]): {coach.enemy_debug(state)}")
+        return True
+
+    def handle_keys(self) -> bool:
+        """The hotkeys pressed since the last read. False when it's time to quit."""
+        if not self.hotkeys:
+            return True
+        for k in self.hotkeys.poll():
+            if k == self.quit_key:
+                print(f"{self.quit_key} pressed: quitting.")
+                self.stopped = True
+                return False
+            if k == self.toggle_key and self.overlay is not None:
+                self.overlay.toggle()
+            elif k in self.actions:
+                self.coach.events.append(f"key {k}")
+                self.actions[k]()
+        return True
+
+    def reconnect(self) -> bool:
+        """DuckStation moves the game's memory on a reset or reboot: find it again."""
+        if time.monotonic() - self.last_try < 1.0:
+            return False
+        self.last_try = time.monotonic()
+        base = self.cfg.get("ram_base")
+        try:
+            new = DuckStationRam(self.cfg.get("process_name", "duckstation"),
+                                 int(base, 16) if isinstance(base, str) else base)
+        except MemoryError_:
+            return False
+        try:
+            read_state(new, self.addrs)
+        except MemoryError_:
+            new.close()                          # found DuckStation, but not the game yet
+            return False
+        old, self.ram = self.ram, new
+        if hasattr(old, "close"):
+            old.close()                          # the old process handle, no longer used
+        if self.watcher is not None:
+            self.watcher.pid = new.pid
+        if self.overlay is not None:
+            self.overlay.pid = new.pid
+        print(f"Found the game again (pid {new.pid}).")
+        return True
+
+    def check_route_file(self) -> None:
+        """Pick up edits to the route (from the editor) while running, and a different
+        route being picked in the editor or launcher."""
+        if time.monotonic() - self.last_route_check < 1.5:
+            return
+        self.last_route_check = time.monotonic()
+        coach = self.coach
+        try:
+            m = self.config_path.stat().st_mtime
+            if m != self.cfg_mtime:              # e.g. "Show the next step" ticked in the launcher
+                self.cfg_mtime = m
+                cfg = json.loads(self.config_path.read_text(encoding="utf-8"))
+                coach.show_next = bool(cfg.get("overlay", {}).get("show_next", False))
+                self.last_view = None            # draw again
+        except (OSError, ValueError):
+            pass
+        if coach.learned.refresh():
+            self.log_run(["learned.json changed (the editor forgot something): reloaded it"])
+        name = routes.active()
+        if name and name != self.route_name and routes.path(name).exists():
+            try:
+                new = load_route(routes.path(name))
+            except Exception as e:
+                print(f"Route {name} has a problem, staying on {self.route_name}: {e}")
+                return
+            self.route_name, self.route_path = name, routes.path(name)
+            self.route_mtime = self.route_path.stat().st_mtime
+            if not self.simulate:
+                coach.switch_route(new, routes.progress_path(name))
+            print(f"Switched to route: {name}")
+            self.log_run([f"switched to route {name}"])
+            return
+        try:
+            m = self.route_path.stat().st_mtime
+        except OSError:
+            return
+        if m == self.route_mtime:
+            return
+        self.route_mtime = m
+        try:
+            coach.reload_route(load_route(self.route_path))
+            print("Route updated")
+        except Exception as e:                   # half-saved or broken file: keep the old route
+            print(f"The route file has a problem, still using the old one: {e}")
+
+    # -- logs, for looking at a run afterwards ------------------------------------
+    def log_fight(self, state) -> None:
+        """A line a second during fights, so problems can be looked at afterwards."""
+        coach, path = self.coach, self.logs("fight_log.txt")
+        try:
+            if path.exists() and path.stat().st_size > 1_000_000:
+                path.replace(self.logs("fight_log.old.txt"))
+            cur = coach.current()
+            name = cur.get("title") or coach.bosses.get(cur.get("boss"), {}).get("name", cur.get("boss"))
+            with path.open("a", encoding="utf-8") as f:
+                f.write(f"{time.strftime('%H:%M:%S')} step {coach.step + 1} {name} | "
+                        f"boss={coach.battle_is_boss} random={coach.battle_random_possible} "
+                        f"enc={len(coach.encounters)} igt={state.igt} | {coach.enemy_debug(state)}\n")
+        except OSError:
+            pass
+
+    def log_run(self, lines) -> None:
+        """Each step change and why, each fight and what it was taken for (logs/run_log.txt).
+        The editor reads this back to show how each step was reached last run."""
+        if not lines:
+            return
+        path = self.logs("run_log.txt")
+        try:
+            if path.exists() and path.stat().st_size > 2_000_000:
+                path.replace(self.logs("run_log.old.txt"))
+            with path.open("a", encoding="utf-8") as f:
+                if not self.run_started:
+                    self.run_started = True
+                    f.write(f"\n=== {time.strftime('%Y-%m-%d %H:%M:%S')} route: {self.route_name} ===\n")
+                for line in lines:
+                    f.write(f"{time.strftime('%H:%M:%S')} {line}\n")
+        except OSError:
+            pass
+
+    def log_bag(self, state) -> None:
+        """What's in the bag each time it changes, so shop checks can be looked at afterwards."""
+        if state.items is None or state.items == self.last_bag:
+            return
+        addrs = self.addrs
+        try:
+            from screen import ITEMS
+            with self.logs("bag_log.txt").open("a", encoding="utf-8") as f:
+                if self.last_bag is None:
+                    raw = self.ram.read(max(0, addrs.inventory - 0x20), 0x240)
+                    f.write(f"{time.strftime('%H:%M:%S')} bag at 0x{addrs.inventory:06X}, raw from -0x20: {raw.hex()}\n")
+                names = ", ".join(f"{ITEMS[i] if i < len(ITEMS) else i} {n}" for i, n in sorted(state.items.items()))
+                f.write(f"{time.strftime('%H:%M:%S')} step {self.coach.step + 1}: {names}\n")
+            self.last_bag = dict(state.items)
+        except OSError:
+            pass
+
+    def log_equips(self, state) -> None:
+        """Everyone's equipment each time it changes (and, the first time, where each
+        character's record is), so equip checks can be looked at afterwards."""
+        if not state.equips or state.equips == self.last_eq:
+            return
+        addrs = self.addrs
+        try:
+            from screen import ITEMS
+            def names(e):
+                return " / ".join(ITEMS[i] if 0 < i < len(ITEMS) else ("-" if i in (0, 255) else str(i)) for i in e)
+            with self.logs("equip_log.txt").open("a", encoding="utf-8") as f:
+                t = time.strftime('%H:%M:%S')
+                if self.last_eq is None:
+                    for n, r in addrs.chars.items():
+                        f.write(f"{t} {n} record at 0x{r['exp']:06X}: exp {state.exp.get(n)} lv {state.levels.get(n)}"
+                                f" hp {state.char_hp.get(n)}\n")
+                    z = addrs.chars.get("zidane", {}).get("exp")
+                    v = addrs.chars.get("vivi", {}).get("exp")
+                    if z is not None and v is not None:
+                        for k in range(12):                   # every record-sized block from Zidane's on
+                            raw = self.ram.read(z + k * (v - z) + addrs.equip_off, 5)
+                            f.write(f"{t} block {k} at 0x{z + k * (v - z):06X}: {names(raw)}\n")
+                for n, e in state.equips.items():
+                    if self.last_eq is None or self.last_eq.get(n) != e:
+                        f.write(f"{t} step {self.coach.step + 1} {n}: {names(e)}\n")
+            self.last_eq = {n: list(e) for n, e in state.equips.items()}
+        except (OSError, KeyError, TypeError):
+            pass
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--debug", action="store_true")
@@ -131,23 +436,21 @@ def main() -> int:
 
     cfg = load_config()
     addrs = Addresses.from_config(cfg)
-    import routes
-    route_name = [routes.active()]
-    if not route_name[0]:
+    route_name = routes.active()
+    if not route_name:
         print("No route found: open the editor and make one.")
         return 1
-    route = load_route(routes.path(route_name[0]))
-    print(f"Route: {route_name[0]}")
+    route = load_route(routes.path(route_name))
+    print(f"Route: {route_name}")
     if args.simulate:
         coach = Coach(route, party_slots=addrs.party_slots)
     else:
         # Each start of the coach starts the route from step 1 with no encounters
         # ("resume_progress": true in config.json carries on where it left off instead).
-        coach = Coach(route, routes.progress_path(route_name[0]), LEARNED, addrs.party_slots,
+        coach = Coach(route, routes.progress_path(route_name), LEARNED, addrs.party_slots,
                       resume=bool(cfg.get("resume_progress", False)))
 
     coach.show_next = bool(cfg.get("overlay", {}).get("show_next", False))
-    cfg_mtime = [CONFIG.stat().st_mtime if CONFIG.exists() else 0.0]
 
     sim = None
     pid = 0
@@ -225,20 +528,7 @@ def main() -> int:
             print(f"Steal check is off ({watcher.ocr.problem}).")
             coach.steal_off = f"Steal check off: {watcher.ocr.problem}"
 
-    keys = cfg.get("keys", {})
-    actions = {
-        keys.get("prev_turn", "F5"): coach.prev_turn,
-        keys.get("next_turn", "F6"): coach.next_turn,
-        keys.get("prev_step", "F7"): coach.prev_step,
-        keys.get("next_step", "F8"): coach.next_step,
-        keys.get("skip_back", "Shift+F7"): lambda: coach.skip(-1),
-        keys.get("skip_forward", "Shift+F8"): lambda: coach.skip(1),
-        keys.get("switch_branch", "Shift+F5"): coach.switch_branch,
-    }
-    toggle_key = keys.get("toggle_overlay", "F9")
-    quit_key = keys.get("quit", "F10")
-    stop = [False]
-
+    actions, toggle_key, quit_key = key_actions(coach, cfg)
     hotkeys = None
     if sys.platform == "win32":
         from hotkeys import Hotkeys
@@ -251,276 +541,16 @@ def main() -> int:
               f"{' / '.join(list(actions)[4:])} = skip back / forward (learns nothing)  ·  "
               f"{toggle_key} = hide/show  ·  {quit_key} = quit")
 
-    route_path = [routes.path(route_name[0])]
-    route_mtime = [route_path[0].stat().st_mtime if route_path[0].exists() else 0.0]
-    last_route_check = [time.monotonic()]
-
-    def check_route_file():
-        """Pick up edits to the route (from the editor) while running, and a different
-        route being picked in the editor or launcher."""
-        if time.monotonic() - last_route_check[0] < 1.5:
-            return
-        last_route_check[0] = time.monotonic()
-        try:
-            m = CONFIG.stat().st_mtime
-            if m != cfg_mtime[0]:                      # e.g. "Show the next step" ticked in the launcher
-                cfg_mtime[0] = m
-                coach.show_next = bool(load_config().get("overlay", {}).get("show_next", False))
-                last_view[0] = None                    # draw again
-        except (OSError, ValueError):
-            pass
-        if coach.learned.refresh():
-            log_run(["learned.json changed (the editor forgot something): reloaded it"])
-        name = routes.active()
-        if name and name != route_name[0] and routes.path(name).exists():
-            try:
-                new = load_route(routes.path(name))
-            except Exception as e:
-                print(f"Route {name} has a problem, staying on {route_name[0]}: {e}")
-                return
-            route_name[0], route_path[0] = name, routes.path(name)
-            route_mtime[0] = route_path[0].stat().st_mtime
-            if not args.simulate:
-                coach.switch_route(new, routes.progress_path(name))
-            print(f"Switched to route: {name}")
-            log_run([f"switched to route {name}"])
-            return
-        try:
-            m = route_path[0].stat().st_mtime
-        except OSError:
-            return
-        if m == route_mtime[0]:
-            return
-        route_mtime[0] = m
-        try:
-            coach.reload_route(load_route(route_path[0]))
-            print("Route updated")
-        except Exception as e:      # half-saved or broken file: keep the old route
-            print(f"The route file has a problem, still using the old one: {e}")
-
     poll_ms = int(cfg.get("poll_ms", 100))
-    last_view: list[View | None] = [None]
-    last_debug = [0.0]
-    last_msg = [""]
-    last_log = [0.0]
-    last_resets = [coach.resets]
-    log_path = log("fight_log.txt")
-
-    def log_fight(coach, state):
-        """A line a second during fights, so problems can be looked at afterwards."""
-        try:
-            if log_path.exists() and log_path.stat().st_size > 1_000_000:
-                log_path.replace(log("fight_log.old.txt"))
-            cur = coach.current()
-            name = cur.get("title") or coach.bosses.get(cur.get("boss"), {}).get("name", cur.get("boss"))
-            with log_path.open("a", encoding="utf-8") as f:
-                f.write(f"{time.strftime('%H:%M:%S')} step {coach.step + 1} {name} | "
-                        f"boss={coach.battle_is_boss} random={coach.battle_random_possible} "
-                        f"enc={len(coach.encounters)} igt={state.igt} | {coach.enemy_debug(state)}\n")
-        except OSError:
-            pass
-
-    run_path = log("run_log.txt")
-    run_started = [False]
-
-    def log_run(lines):
-        """Each step change and why, each fight and what it was taken for (logs/run_log.txt).
-        The editor reads this back to show how each step was reached last run."""
-        if not lines:
-            return
-        try:
-            if run_path.exists() and run_path.stat().st_size > 2_000_000:
-                run_path.replace(log("run_log.old.txt"))
-            with run_path.open("a", encoding="utf-8") as f:
-                if not run_started[0]:
-                    run_started[0] = True
-                    f.write(f"\n=== {time.strftime('%Y-%m-%d %H:%M:%S')} route: {route_name[0]} ===\n")
-                for line in lines:
-                    f.write(f"{time.strftime('%H:%M:%S')} {line}\n")
-        except OSError:
-            pass
-
-    last_bag = [None]
-    bag_path = log("bag_log.txt")
-
-    def log_bag(state):
-        """What's in the bag each time it changes, so shop checks can be looked at afterwards."""
-        if state.items is None or state.items == last_bag[0]:
-            return
-        try:
-            from screen import ITEMS
-            with bag_path.open("a", encoding="utf-8") as f:
-                if last_bag[0] is None:
-                    raw = rh[0].read(max(0, addrs.inventory - 0x20), 0x240)
-                    f.write(f"{time.strftime('%H:%M:%S')} bag at 0x{addrs.inventory:06X}, raw from -0x20: {raw.hex()}\n")
-                names = ", ".join(f"{ITEMS[i] if i < len(ITEMS) else i} {n}" for i, n in sorted(state.items.items()))
-                f.write(f"{time.strftime('%H:%M:%S')} step {coach.step + 1}: {names}\n")
-            last_bag[0] = dict(state.items)
-        except OSError:
-            pass
-
-    last_eq = [None]
-    eq_path = log("equip_log.txt")
-
-    def log_equips(state):
-        """Everyone's equipment each time it changes (and, the first time, where each
-        character's record is), so equip checks can be looked at afterwards."""
-        if not state.equips or state.equips == last_eq[0]:
-            return
-        try:
-            from screen import ITEMS
-            def names(e):
-                return " / ".join(ITEMS[i] if 0 < i < len(ITEMS) else ("-" if i in (0, 255) else str(i)) for i in e)
-            with eq_path.open("a", encoding="utf-8") as f:
-                t = time.strftime('%H:%M:%S')
-                if last_eq[0] is None:
-                    for n, r in addrs.chars.items():
-                        f.write(f"{t} {n} record at 0x{r['exp']:06X}: exp {state.exp.get(n)} lv {state.levels.get(n)}"
-                                f" hp {state.char_hp.get(n)}\n")
-                    z = addrs.chars.get("zidane", {}).get("exp")
-                    v = addrs.chars.get("vivi", {}).get("exp")
-                    if z is not None and v is not None:
-                        for k in range(12):                   # every record-sized block from Zidane's on
-                            raw = rh[0].read(z + k * (v - z) + addrs.equip_off, 5)
-                            f.write(f"{t} block {k} at 0x{z + k * (v - z):06X}: {names(raw)}\n")
-                for n, e in state.equips.items():
-                    if last_eq[0] is None or last_eq[0].get(n) != e:
-                        f.write(f"{t} step {coach.step + 1} {n}: {names(e)}\n")
-            last_eq[0] = {n: list(e) for n, e in state.equips.items()}
-        except (OSError, KeyError, TypeError):
-            pass
-
-    rh = [ram]                       # the game's memory; reopened after a reset
-    lost = [0.0, 0.0]                # when the game went away, last reconnect try
-
-    def reconnect() -> bool:
-        """DuckStation moves the game's memory on a reset or reboot: find it again."""
-        if time.monotonic() - lost[1] < 1.0:
-            return False
-        lost[1] = time.monotonic()
-        try:
-            new = DuckStationRam(cfg.get("process_name", "duckstation"),
-                                 int(cfg["ram_base"], 16) if isinstance(cfg.get("ram_base"), str) else cfg.get("ram_base"))
-        except MemoryError_:
-            return False
-        try:
-            read_state(new, addrs)
-        except MemoryError_:
-            new.close()                                # found DuckStation, but not the game yet
-            return False
-        old = rh[0]
-        rh[0] = new
-        if hasattr(old, "close"):
-            old.close()                                # the old process handle, no longer used
-        if watcher is not None:
-            watcher.pid = new.pid
-        if overlay is not None:
-            overlay.pid = new.pid
-        print(f"Found the game again (pid {new.pid}).")
-        return True
-
-    def handle_keys() -> bool:
-        """The hotkeys pressed since the last read. False when it's time to quit."""
-        if not hotkeys:
-            return True
-        for k in hotkeys.poll():
-            if k == quit_key:
-                print(f"{quit_key} pressed: quitting.")
-                stop[0] = True
-                return False
-            if k == toggle_key and overlay is not None:
-                overlay.toggle()
-            elif k in actions:
-                coach.events.append(f"key {k}")
-                actions[k]()
-        return True
-
-    def tick(render):
-        if STOP_FILE.exists():                         # "Stop coach" in the launcher (game there or not)
-            try:
-                STOP_FILE.unlink()
-            except OSError:
-                pass
-            print("Stopped from the launcher.")
-            stop[0] = True
-            return False
-        try:
-            if sim:
-                sim.tick()
-            state = read_state(rh[0], addrs)
-            lost[0] = 0.0
-        except MemoryError_ as e:
-            if sim:
-                print(f"Lost the game: {e}")
-                return False
-            if not lost[0]:
-                lost[0] = time.monotonic()
-                print(f"Lost the game ({e}); waiting for it to come back...")
-            if not handle_keys():
-                return False
-            reconnect()
-            return True                       # keep waiting (F10 quits)
-        if not handle_keys():
-            return False
-        if watcher and args.debug and time.monotonic() - last_debug[0] > 1 and watcher.active.is_set():
-            print(f"screen text: {watcher.last_text!r}" + (f"  error: {watcher.last_error}" if watcher.last_error else ""))
-        if watcher:
-            for kind, item in watcher.poll():
-                if kind == "got":
-                    coach.pickup_event(item)
-                    print(f"Pickup seen on screen: {item}")
-                    continue
-                coach.steal_event(kind, item)
-                if kind == "stole":
-                    print(f"Steal seen on screen: {item}")
-        if not sim:
-            check_route_file()
-        view = coach.update(state)
-        if coach.events:
-            log_run(coach.events)
-            coach.events.clear()
-        if coach.resets != last_resets[0]:
-            last_resets[0] = coach.resets
-            print("Game reset seen: back to the start of the route, encounters cleared.")
-        log_bag(state)
-        log_equips(state)
-        if coach.in_battle and time.monotonic() - last_log[0] >= 1.0:
-            last_log[0] = time.monotonic()
-            log_fight(coach, state)
-        if args.debug and coach.message != last_msg[0]:
-            last_msg[0] = coach.message
-            if coach.message:
-                print("coach: " + coach.message)
-        if watcher:
-            if coach.wants_steal_check():
-                watcher.set_active(True, full=False)       # battle message at the top
-            elif coach.wants_pickup_check():
-                watcher.set_active(True, full=True)        # "Received ..." can show anywhere
-            else:
-                watcher.set_active(False)
-        if view != last_view[0]:
-            render(view)
-            last_view[0] = view
-        if args.debug and time.monotonic() - last_debug[0] > 1:
-            last_debug[0] = time.monotonic()
-            fp = coach.learned.battle_fp
-            check = ("off" if coach.learned.data.get("fp_unusable") else
-                     "learning" if fp is None else
-                     "match" if state.battle_sig == fp else "no match")
-            print(f"enemyHP={state.enemy_hp} enemyATB={state.enemy_atb} "
-                  f"partyATB={state.party_atb} partyHP={state.party_hp_slots} igt={state.igt} "
-                  f"screen={state.field_id} encounters={'yes' if state.encounters_possible else 'no'} "
-                  f"battle-code={check} in_battle={coach.in_battle}")
-            if coach.in_battle:
-                print(f"  enemies (slot:first>now=shown [A=in fight, S=hidden 10k]): {coach.enemy_debug(state)}")
-        return True
+    runner = Runner(coach, ram, addrs, cfg, route_name, sim=sim, watcher=watcher, hotkeys=hotkeys,
+                    debug=args.debug, simulate=args.simulate)
+    tick = runner.tick
 
     try:
         STOP_FILE.unlink()                             # a stop asked for before this start
     except OSError:
         pass
 
-    overlay = None
     if args.console:
         try:
             while tick(console_print):
@@ -533,7 +563,7 @@ def main() -> int:
 
     from overlay import Overlay, make_dpi_aware
     make_dpi_aware()
-    overlay = Overlay(cfg.get("overlay", {}), pid)
+    overlay = runner.overlay = Overlay(cfg.get("overlay", {}), pid)
     follow_every = max(1, 1000 // poll_ms)   # re-check DuckStation's window about once a second
     ticks = [0]
 

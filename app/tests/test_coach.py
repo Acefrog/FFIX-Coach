@@ -2845,6 +2845,83 @@ def test_backups_of_a_route_with_a_similar_name_are_kept():
     mine = [f for f in backups.iterdir() if f.name != other.name]
     assert other.exists() and len(mine) == editor.KEEP_BACKUPS
 
+
+class _FakeKeys:
+    """Hotkeys pressed, handed out on the next poll like the real ones."""
+    def __init__(self):
+        self.pressed = []
+
+    def poll(self):
+        out, self.pressed = self.pressed, []
+        return out
+
+
+class _FakePanel:
+    def __init__(self):
+        self.toggles = 0
+
+    def toggle(self):
+        self.toggles += 1
+
+
+def _runner(ram=None):
+    """A Runner on the fake game, with its stop file and logs in a temporary folder."""
+    import main
+    d = Path(tempfile.mkdtemp())
+    g = Game()
+    r = main.Runner(g.coach, ram or g.ram, g.a, {}, "Test", logs=lambda name: d / name,
+                    stop_file=d / "stop_coach", config_path=d / "config.json", watch_files=False)
+    r.hotkeys, r.overlay = _FakeKeys(), _FakePanel()
+    return g, r, d
+
+
+def _game_gone():
+    """Game memory that can't be read (DuckStation closed), and no DuckStation to find again."""
+    import main
+    from memory import MemoryError_, RamSource
+
+    class Gone(RamSource):
+        def read(self, offset, size):
+            raise MemoryError_("closed")
+
+    def nowhere(*a, **k):
+        raise MemoryError_("not running")
+    return Gone(), nowhere
+
+
+def test_runner_draws_the_panel_and_logs_key_presses():
+    g, r, d = _runner()
+    drawn = []
+    assert r.tick(drawn.append) and len(drawn) == 1
+    assert r.tick(drawn.append) and len(drawn) == 1        # nothing changed: not drawn again
+    before = g.coach.step
+    r.hotkeys.pressed = ["F8"]
+    assert r.tick(drawn.append) and g.coach.step > before and len(drawn) == 2
+    assert "key F8" in (d / "run_log.txt").read_text(encoding="utf-8")
+    r.hotkeys.pressed = ["F10"]
+    assert not r.tick(drawn.append) and r.stopped
+
+
+def test_runner_stop_button_and_keys_work_while_the_game_is_gone():
+    import main
+    gone, nowhere = _game_gone()
+    real = main.DuckStationRam
+    main.DuckStationRam = nowhere
+    try:
+        g, r, d = _runner(gone)
+        before = g.coach.step
+        r.hotkeys.pressed = ["F9", "F8"]
+        assert r.tick(lambda v: None)                        # still waiting for the game
+        assert r.overlay.toggles == 1 and g.coach.step > before    # F9 and F8 weren't thrown away
+        (d / "stop_coach").write_text("stop")
+        assert not r.tick(lambda v: None) and r.stopped        # the launcher's Stop
+        assert not (d / "stop_coach").exists()
+        g, r, d = _runner(gone)
+        r.hotkeys.pressed = ["F10"]
+        assert not r.tick(lambda v: None) and r.stopped
+    finally:
+        main.DuckStationRam = real
+
 if __name__ == "__main__":
     import inspect
     import sys

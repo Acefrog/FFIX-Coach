@@ -405,6 +405,9 @@ class StealWatcher:
         self.full = False
         self._last_kind = None
         self._last_event: tuple[tuple, float] | None = None
+        self._window_ok = False          # DuckStation's window has given a picture before
+        self._blanks = 0                 # blank pictures from it in a row, before it ever gave one
+        self._logged: str | None = None  # the last line written to screen_log.txt
         if self.ocr.available:
             threading.Thread(target=self._run, daemon=True).start()
 
@@ -447,11 +450,11 @@ class StealWatcher:
             if pixels is not None:
                 self._window_ok, self._blanks = True, 0
                 return (x, y, w, h), pixels
-            if getattr(self, "_window_ok", False):
+            if self._window_ok:
                 # The game itself is black for a moment (a fade between screens): nothing to
                 # read. Don't switch to copying the screen, which reads whatever is on top.
                 return (x, y, w, h), b""
-            self._blanks = getattr(self, "_blanks", 0) + 1
+            self._blanks += 1
             if self._blanks < 40:                     # about 6 seconds of nothing from the start
                 return (x, y, w, h), b""
             self.screen_only = True                   # this setup never gives the window's picture
@@ -487,7 +490,7 @@ class StealWatcher:
         line = (text or "").strip().replace("\n", " / ")
         if error:
             line = f"ERROR {error}"
-        if not line or line == getattr(self, "_logged", None):
+        if not line or line == self._logged:
             return
         self._logged = line
         if self.log_path is None:
