@@ -64,8 +64,8 @@ def instructions_after_checks(lines: list[str]) -> bool:
         info = classify(line)
         if info.kind in ("note", "story"):
             notes.append(i)
-        elif info.checked and not info.problem and not is_optional(line):
-            last = i
+        elif info.kind == "substep" or (info.checked and not info.problem and not is_optional(line)):
+            last = i                                   # (a "[Shop]" sub-step call is something to do too)
     return last is not None and any(i > last for i in notes)
 
 

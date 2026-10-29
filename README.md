@@ -45,7 +45,7 @@ Lines the coach can tick:
 
 Add `(if …)` to a line and the step won't wait for it.
 
-**+ Sub-step:** something done in the middle of a step (Baku inside Crash Site); afterwards it goes back to the step. A `[Baku]` line in the step shows where it comes (added for you; it follows if you rename the sub-step) and ticks when it's done. A sub-step can have **+ Condition** too (a menu only when you stole something): when it doesn't hold, it and its `[…]` line are left out. A sub-step starts by itself: a fight when it starts; a walk or menu sub-step once the lines above its `[…]` are done, or when you reach its screen (learned like any step).
+**+ Sub-step:** something done in the middle of a step (Baku inside Crash Site); afterwards it goes back to the step. A `[Baku]` line in the step shows where it comes (added for you; it follows if you rename the sub-step) and ticks when it's done. A sub-step can have **+ Condition** too (a menu only when you stole something): when it doesn't hold, it and its `[…]` line are left out. A sub-step starts by itself: a fight when it starts; a walk or menu sub-step once the lines above its `[…]` are done, or when you reach its screen (learned like any step). A shop sub-step can have its screen written in the route file (`"screen": 904`, the numbers in `app\field_names.py`): it then comes up only when you walk into the shop, from the first run.
 
 **+ Branch:** a different way, e.g. 12a for a failed steal. Set *Do 12a instead of 12 when I got Broadsword < 1*. "Got" means stolen, picked up or bought this run. **+ Item** adds another check; all of them must hold.
 

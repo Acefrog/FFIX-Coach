@@ -532,6 +532,14 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
 
     step_key = staticmethod(step_key)          # a step's identity (steps.py)
 
+    def _start_screen(self, i: int) -> int | None:
+        """The screen step i starts on: typed in the route ("screen": a shop's own screen,
+        known from the first run), else what was learned."""
+        typed = self.steps[i].get("screen")
+        if typed is not None:
+            return int(typed)
+        return self.learned.field(self.step_key(self.steps[i]), self.rname)
+
     def _fresh_subs(self, old: int) -> None:
         """Arriving at a step other than from one of its own sub-steps: its sub-steps are
         still to do (they may have been passed before, then a save loaded or F7 pressed)."""

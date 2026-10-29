@@ -2972,6 +2972,66 @@ def test_typed_hp_beats_learned_records_for_fights_of_one_kind():
     g.fight([899], 15)
     assert g.coach.current()["title"] == "After", g.coach.events
 
+
+def test_pickups_after_the_menu_finish_a_menu_step():
+    import routes
+    from screen import ITEMS
+    g, equip, ability, menu = menu_game()
+    g.a.inventory = 0x1E0000
+    def bag(items):
+        for k in range(256):
+            g.ram.write(g.a.inventory + 2 * k, 255, 1)
+            g.ram.write(g.a.inventory + 2 * k + 1, 0, 1)
+        for k, (name, n) in enumerate(items.items()):
+            g.ram.write(g.a.inventory + 2 * k, ITEMS.index(name), 1)
+            g.ram.write(g.a.inventory + 2 * k + 1, n, 1)
+    bag({"Potion": 3})
+    g.coach = Coach(routes.expand({"name": "m", "steps": [
+        {"disc": 3, "type": "menu", "title": "Synth & pickups",
+         "lines": ["Vivi: Silk Shirt", "1x Phoenix Pinion (wheelbarrow)"]},
+        {"disc": 3, "type": "move", "title": "After", "lines": ["Walk on"]}]}), learned_path=tmp_learned())
+    g.read(3)
+    menu(True); g.read()
+    equip("vivi", 3, "Silk Shirt"); g.read()
+    menu(False); g.read(3)
+    assert g.coach.step == 0                            # menu done, the pickup still to come
+    bag({"Potion": 3, "Phoenix Pinion": 1})
+    g.read(3)
+    assert g.coach.step == 1                            # picked up with the menu closed: on
+
+
+def test_a_shop_sub_step_comes_up_on_its_screen():
+    import routes
+    from screen import ITEMS
+    g = Game(tmp_learned())
+    g.a.inventory = 0x1E0000
+    def bag(items):
+        for k in range(256):
+            g.ram.write(g.a.inventory + 2 * k, 255, 1)
+            g.ram.write(g.a.inventory + 2 * k + 1, 0, 1)
+        for k, (name, n) in enumerate(items.items()):
+            g.ram.write(g.a.inventory + 2 * k, ITEMS.index(name), 1)
+            g.ram.write(g.a.inventory + 2 * k + 1, n, 1)
+    bag({"Ether": 1})
+    g.coach = Coach(routes.expand({"name": "s", "steps": [
+        {"disc": 2, "type": "move", "title": "Town", "lines": ["Up the street", "1x Tent (chest)", "[Shop]"]},
+        {"disc": 2, "type": "menu", "title": "Shop", "lines": ["Buy 1 Potion"], "inside": True, "screen": 500},
+        {"disc": 2, "type": "move", "title": "After", "lines": ["Walk on"]}]}), learned_path=tmp_learned())
+    g.screen(400, seconds=4)
+    bag({"Ether": 1, "Tent": 1})
+    g.screen(400, seconds=10)
+    assert g.coach.step == 0                          # lines above done, but not in the shop yet
+    g.coach.picked.clear()                            # (as if the Tent had been missed)
+    g.screen(500, seconds=2)
+    assert g.coach.step == 1                          # walked into the shop: its sub-step
+    bag({"Ether": 1, "Tent": 1, "Potion": 1})
+    g.read(3)
+    assert g.coach.step == 0 and 1 in g.coach.inside_done     # bought: back to the town
+    assert 2 in g.read().done                                  # its "[Shop]" line is ticked
+    bag({"Ether": 1, "Tent": 2})                               # (the Tent picked up after all)
+    g.read(3)
+    assert g.coach.step == 2                                   # everything done: on
+
 if __name__ == "__main__":
     import inspect
     import sys

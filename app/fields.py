@@ -46,21 +46,23 @@ class FieldsMixin:
 
         if f == self.field_handled:
             return
+        # A walk/menu sub-step's own screen (a shop): into it, even with lines above it still
+        # to do (they're still there when it's done: it comes back to its step).
+        if self._start_screen(self.step) != f:
+            for j in self._pending_inside(self.step):
+                if self.steps[j]["type"] != "boss" and self._start_screen(j) == f:
+                    self._goto(j, manual=False, why=f"reached {field_name(f)}")
+                    self._pending_field_learn = None
+                    self.field_handled = f
+                    return
         if self.current()["type"] != "boss" and self._menu_progress(state)[1] is not None:
             return                                     # something on this step still to do: stay
         self.field_handled = f
-        if self.learned.field(self.step_key(self.current()), self.rname) == f:
+        if self._start_screen(self.step) == f:
             return                                     # still on this step's own screen
-        for j in self._pending_inside(self.step):     # a walk/menu sub-step's own screen: into it
-            if (self.steps[j]["type"] != "boss"
-                    and self.learned.field(self.step_key(self.steps[j]), self.rname) == f):
-                self._goto(j, manual=False, why=f"reached {field_name(f)}")
-                self._pending_field_learn = None
-                self.field_handled = f
-                return
         ahead = self._jumpable()
         for i in ahead:
-            if self.learned.field(self.step_key(self.steps[i]), self.rname) == f:
+            if self._start_screen(i) == f:
                 if self._field_ambiguous(i, f):
                     return                             # several nearby steps share this screen
                 self._goto(i, manual=False, why=f"reached {field_name(f)}")
@@ -73,9 +75,9 @@ class FieldsMixin:
         for i in range(self.step + 1, min(len(self.steps), last + 4)):
             b = self.branch_of(self.steps[i])
             if (not b or b[0] in self.branch_choice or self.active(i)
-                    or self.learned.field(self.step_key(self.steps[i]), self.rname) != f):
+                    or self._start_screen(i) != f):
                 continue
-            if any(self.learned.field(self.step_key(self.steps[j]), self.rname) == f
+            if any(self._start_screen(j) == f
                    for j in range(max(0, self.step - 3), min(len(self.steps), self.step + 16))
                    if j != i and self.branch_of(self.steps[j]) != b):
                 return                                 # other steps start here too: can't tell
@@ -112,5 +114,5 @@ class FieldsMixin:
 
     def _field_ambiguous(self, target: int, f: int) -> bool:
         lo, hi = max(0, self.step - 3), min(len(self.steps), self.step + 9)
-        return any(self.learned.field(self.step_key(self.steps[j]), self.rname) == f
+        return any(self._start_screen(j) == f
                    for j in range(lo, hi) if j != target and self.active(j))

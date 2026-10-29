@@ -64,18 +64,11 @@
   },
   {
    "disc": 1,
-   "type": "menu",
-   "title": "After the Nobles",
+   "type": "move",
+   "title": "After the Nobles & the castle",
    "lines": [
     "Zidane: Optimize",
-    "# Mage Masher"
-   ]
-  },
-  {
-   "disc": 1,
-   "type": "move",
-   "title": "Alexandria Castle",
-   "lines": [
+    "# Mage Masher",
     "Up the stairs: Garnet scene, name Steiner",
     "Steiner: round the grand hall, down the back stairs",
     "Down twice to the fountain, left, up the tower",
@@ -191,8 +184,7 @@
     "Right: talk to Baku, back left: talk again",
     "[Baku]",
     "Left upstairs: talk to Steiner, leave and re-enter",
-    "1x Ether (where Steiner sat)",
-    "Back to Vivi, leave the theatreship"
+    "1x Ether (where Steiner sat)"
    ]
   },
   {
@@ -218,6 +210,7 @@
    "type": "move",
    "title": "Evil Forest (back)",
    "lines": [
+    "Back to Vivi, leave the theatreship",
     "Past the Prison Cage spot: left out and back in to break up the screen, then up-right",
     "Fountain scene: exit right, then left and up",
     "# Goblin/Wolf: Zidane or Steiner, Vivi Fire; Flying Flower: Fire Sword"
@@ -332,27 +325,45 @@
   },
   {
    "disc": 1,
-   "type": "menu",
-   "title": "Dali Shop",
+   "type": "move",
+   "title": "Dali",
    "lines": [
     "Leave the inn > Garden (top right) and straight back out",
     "Bar: in and out twice > Vivi (left) > Shop (left of the inn)",
     "Talk to Garnet, then the shopkeeper",
+    "[Dali Shop]",
+    "[Dali Shop (no Broadsword)]",
+    "Inn: Garnet > North (cutscene) > Windmill: manhole",
+    "1x Leather Wrist (box room chest, only if you didn't buy one)",
+    "Straight up through the rooms to Vivi",
+    "Dagger: Feather Hat",
+    "Zidane: Leather Wrist, Leather Shirt",
+    "Vivi: Silk Shirt",
+    "2x Any item (bottom of the steps: back right corner, middle front)",
+    "Morrid's house: talk, then leave",
+    "Barrel: 2nd option (Observe it more)"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "Dali Shop",
+   "lines": [
     "Buy",
     "  1 Leather Wrist",
     "  3-4 Wrist",
     "  3 Feather Hat"
    ],
-   "backup": "1,320 Gil with 4 Wrists"
+   "backup": "1,320 Gil with 4 Wrists",
+   "inside": true,
+   "when": "Broadsword >= 1",
+   "screen": 354
   },
   {
    "disc": 1,
    "type": "menu",
    "title": "Dali Shop (no Broadsword)",
    "lines": [
-    "Leave the inn > Garden (top right) and straight back out",
-    "Bar: in and out twice > Vivi (left) > Shop (left of the inn)",
-    "Talk to Garnet, then the shopkeeper",
     "Buy",
     "  1 Leather Wrist",
     "  3-4 Wrist",
@@ -361,31 +372,9 @@
     "Steiner: Optimize",
     "Steiner: Bird Killer, Bug Killer"
    ],
-   "alt": true,
-   "when": "Broadsword < 1"
-  },
-  {
-   "disc": 1,
-   "type": "menu",
-   "title": "Dali Underground menu",
-   "lines": [
-    "Inn: Garnet > North (cutscene) > Windmill: manhole",
-    "1x Leather Wrist (box room chest, only if you didn't buy one)",
-    "Straight up through the rooms to Vivi",
-    "Dagger: Feather Hat",
-    "Zidane: Leather Wrist, Leather Shirt",
-    "Vivi: Silk Shirt"
-   ]
-  },
-  {
-   "disc": 1,
-   "type": "move",
-   "title": "Steiner at the farm",
-   "lines": [
-    "2x Any item (bottom of the steps: back right corner, middle front)",
-    "Morrid's house: talk, then leave",
-    "Barrel: 2nd option (Observe it more)"
-   ]
+   "when": "Broadsword < 1",
+   "inside": true,
+   "screen": 354
   },
   {
    "disc": 1,
@@ -427,11 +416,24 @@
   },
   {
    "disc": 1,
-   "type": "menu",
-   "title": "Lindblum Weapon Shop",
+   "type": "move",
+   "title": "Lindblum",
    "lines": [
     "Down one screen to the elevator; name Freya",
     "Leave the inn, up, up-right: Weapon Shop (right)",
+    "[Lindblum Weapon Shop]",
+    "[Lindblum Synth]",
+    "Inn portal (Kupo Nut ATE) > Theatre District > Tantalus hideout",
+    "Castle > Right stairs: Steiner",
+    "Elevator (stopped) > Right stairs > Sleeping guard's clothes",
+    "Elevator, left > Lookout: all 6 (!)"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "Lindblum Weapon Shop",
+   "lines": [
     "Sell all Ether, Phoenix Pinion, Eye Drops",
     "Sell all Silver Gloves, Linen Cuirass (if stolen)",
     "Buy",
@@ -442,7 +444,9 @@
     "  1 Iron Helm",
     "  1 Leather Plate"
    ],
-   "backup": "4,120 Gil"
+   "backup": "4,120 Gil",
+   "inside": true,
+   "screen": 562
   },
   {
    "disc": 1,
@@ -454,18 +458,9 @@
     "  3 Cotton Robe",
     "  2 Yellow Scarf"
    ],
-   "backup": "2 Yellow Scarves no matter what: only 3 Robes if Gil is short"
-  },
-  {
-   "disc": 1,
-   "type": "move",
-   "title": "Lindblum plot",
-   "lines": [
-    "Inn portal (Kupo Nut ATE) > Theatre District > Tantalus hideout",
-    "Castle > Right stairs: Steiner",
-    "Elevator (stopped) > Right stairs > Sleeping guard's clothes",
-    "Elevator, left > Lookout: all 6 (!)"
-   ]
+   "backup": "2 Yellow Scarves no matter what: only 3 Robes if Gil is short",
+   "inside": true,
+   "screen": 560
   },
   {
    "disc": 1,
@@ -487,31 +482,11 @@
   {
    "disc": 1,
    "type": "menu",
-   "title": "Dragon's Gate Shop",
+   "title": "Dragon's Gate to the Grotto",
    "lines": [
-    "Sell all Cotton Robe",
-    "Sell extra Wrist",
-    "Buy",
-    "  21 Potion",
-    "  15 Phoenix Down",
-    "1x Tent (hidden: right side, behind the track ledge)"
-   ]
-  },
-  {
-   "disc": 1,
-   "type": "move",
-   "title": "Chocobo's Forest",
-   "lines": [
+    "[Dragon's Gate Shop]",
     "Get Choco; out to the tracks, Gysahl Greens, back in",
-    "Buy 4-5 Gysahl Greens"
-   ],
-   "backup": "The 5th Green cures Berserk on Zidane"
-  },
-  {
-   "disc": 1,
-   "type": "menu",
-   "title": "Grotto Entrance menu",
-   "lines": [
+    "Buy 4-5 Gysahl Greens",
     "Ride to Gizamaluke's Grotto",
     "Right: dying Burmecian (bell)",
     "Left: ring the bell at the door, THEN menu",
@@ -524,7 +499,22 @@
     "Freya: Bird Killer, Level Up",
     "Freya front row"
    ],
-   "backup": "No Flee now: kill encounters or R1+L1"
+   "backup": "The 5th Green cures Berserk on Zidane / No Flee now: kill encounters or R1+L1"
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "Dragon's Gate Shop",
+   "lines": [
+    "Sell all Cotton Robe",
+    "Sell extra Wrist",
+    "Buy",
+    "  21 Potion",
+    "  15 Phoenix Down",
+    "1x Tent (hidden: right side, behind the track ledge)"
+   ],
+   "inside": true,
+   "screen": 602
   },
   {
    "disc": 1,
@@ -547,19 +537,12 @@
   {
    "disc": 1,
    "type": "menu",
-   "title": "After the 2nd Black Mages",
+   "title": "Grotto: to Gizamaluke",
    "lines": [
     "Revive and heal all",
     "Zidane: Optimize",
     "Zidane: Mage Masher",
-    "Zidane: Bird Killer"
-   ]
-  },
-  {
-   "disc": 1,
-   "type": "menu",
-   "title": "Before Gizamaluke",
-   "lines": [
+    "Zidane: Bird Killer",
     "Main door > Big bell (moogle) > Chest: bell > Right door",
     "Moogle at the back: bell",
     "Round the bell: open the left door, THEN menu",
@@ -593,19 +576,12 @@
   {
    "disc": 1,
    "type": "menu",
-   "title": "South Gate & world map",
+   "title": "South Gate to Burmecia",
    "lines": [
     "1x Multina Racket (chest, straight left inside)",
     "Elephant man (left) > Young man (bottom right) > Woman (top right)",
     "Alley > Guard: pass > Alley > Train: back right seat",
-    "Zidane: Dagger"
-   ]
-  },
-  {
-   "disc": 1,
-   "type": "menu",
-   "title": "Burmecia",
-   "lines": [
+    "Zidane: Dagger",
     "# Up one screen, menu as the next one loads",
     "Zidane: Optimize",
     "# The Ogre / Headgear / Leather Wrist / Leather Plate / Yellow Scarf",
@@ -631,18 +607,11 @@
   },
   {
    "disc": 1,
-   "type": "menu",
-   "title": "After the Burmecia mages",
+   "type": "move",
+   "title": "Burmecia: after the mages",
    "lines": [
     "Zidane: Mage Masher, Leather Hat",
-    "Zidane back row"
-   ]
-  },
-  {
-   "disc": 1,
-   "type": "move",
-   "title": "Burmecia (Germinas Boots)",
-   "lines": [
+    "Zidane back row",
     "Right stairs, next stairs, left at the top, left room",
     "1x Germinas Boots (cross the bridge holding Cancel)",
     "Run back across so it falls",
@@ -707,7 +676,7 @@
   {
    "disc": 2,
    "type": "menu",
-   "title": "Treno",
+   "title": "Treno & Marcus",
    "lines": [
     "Up, right at the fork",
     "?x Gil (chest round the curve after the broken bridge)",
@@ -718,22 +687,8 @@
     "1x Power Belt (talk to the robber in the hall: one chance!)",
     "?x Gil (left of the auction house door, before going in)",
     "Auction house: Garnet",
-    "Buy",
-    "  1 Mythril Sword",
-    "  1 Ice Staff",
-    "  1 Bone Wrist",
-    "  1 Magus Hat",
-    "  2 Bandana",
-    "  1 Chain Plate",
-    "  1 Chain Mail",
-    "# Then up the tower and down, left across the bridge to Baku's hideout"
-   ]
-  },
-  {
-   "disc": 2,
-   "type": "menu",
-   "title": "Marcus joins",
-   "lines": [
+    "[Treno Shop]",
+    "# Then up the tower and down, left across the bridge to Baku's hideout",
     "Marcus: Bandana",
     "Steiner: Optimize",
     "# Mythril Sword / Chain Mail / Power Belt",
@@ -742,6 +697,23 @@
     "@Lv Steiner",
     "Cure Steiner to full with Dagger"
    ]
+  },
+  {
+   "disc": 2,
+   "type": "menu",
+   "title": "Treno Shop",
+   "lines": [
+    "Buy",
+    "  1 Mythril Sword",
+    "  1 Ice Staff",
+    "  1 Bone Wrist",
+    "  1 Magus Hat",
+    "  2 Bandana",
+    "  1 Chain Plate",
+    "  1 Chain Mail"
+   ],
+   "inside": true,
+   "screen": 904
   },
   {
    "disc": 2,
@@ -777,11 +749,21 @@
   {
    "disc": 2,
    "type": "move",
-   "title": "Cleyra's Trunk",
+   "title": "Cleyra's Trunk to Cleyra",
    "lines": [
     "Zidane: round the mountain to the tornado",
     "Switch right of the gate, in > Up, then down",
-    "1x Magician Shoes (bottom of the 2nd screen)"
+    "1x Magician Shoes (bottom of the 2nd screen)",
+    "[Cleyra's Trunk menu]",
+    "Right, up the hill: nook, 2nd option (hand in the hole)",
+    "1x Ether (chest on the left)",
+    "Down, up the ropes, out > Left > Up-left, up-right, right: cave",
+    "Upper left cave, up to the sandpits > Left, left and up round the bend > Ladder",
+    "Cleyra: No to the tour",
+    "LEFT path up to the Cathedral",
+    "1x Thunder Gloves (2nd screen: by the gazebo sign, right)",
+    "Cathedral: talk to the RIGHT guard",
+    "Back down the RIGHT side"
    ]
   },
   {
@@ -801,23 +783,8 @@
     "Freya: Man Eater, Cover",
     "Zidane front row"
    ],
-   "backup": "Get AP from at least one Trunk fight (Vivi Blizzara one-shots)"
-  },
-  {
-   "disc": 2,
-   "type": "move",
-   "title": "Cleyra",
-   "lines": [
-    "Right, up the hill: nook, 2nd option (hand in the hole)",
-    "1x Ether (chest on the left)",
-    "Down, up the ropes, out > Left > Up-left, up-right, right: cave",
-    "Upper left cave, up to the sandpits > Left, left and up round the bend > Ladder",
-    "Cleyra: No to the tour",
-    "LEFT path up to the Cathedral",
-    "1x Thunder Gloves (2nd screen: by the gazebo sign, right)",
-    "Cathedral: talk to the RIGHT guard",
-    "Back down the RIGHT side"
-   ]
+   "backup": "Get AP from at least one Trunk fight (Vivi Blizzara one-shots)",
+   "inside": true
   },
   {
    "disc": 2,
@@ -841,17 +808,10 @@
   {
    "disc": 2,
    "type": "menu",
-   "title": "Cleyra Inn shop",
+   "title": "Cleyra inn & Freya solo",
    "lines": [
     "Blue Burmecian in the inn",
-    "Buy 1 Partisan"
-   ]
-  },
-  {
-   "disc": 2,
-   "type": "menu",
-   "title": "Freya solo",
-   "lines": [
+    "Buy 1 Partisan",
     "Freya: Partisan, Yellow Scarf"
    ]
   },
@@ -925,21 +885,14 @@
   },
   {
    "disc": 2,
-   "type": "move",
+   "type": "menu",
    "title": "Red Rose & Alexandria Castle",
    "lines": [
     "Follow Beatrix; pods: talk to Vivi",
     "Guards: Steiner one-shots them (can be skipped)",
     "Throne room: pull the candle",
     "1x Ice Brand (jump off the rotating bridge)",
-    "1x Phoenix Pinion (same room)"
-   ]
-  },
-  {
-   "disc": 2,
-   "type": "menu",
-   "title": "After the Ice Brand",
-   "lines": [
+    "1x Phoenix Pinion (same room)",
     "Freya: Optimize",
     "# Partisan / Iron Helm / Thunder Gloves / Linen Cuirass / Yellow Scarf",
     "Steiner: Optimize",
@@ -1074,31 +1027,17 @@
   {
    "disc": 2,
    "type": "menu",
-   "title": "Lindblum Synth 2",
+   "title": "Lindblum to Qu's Marsh",
    "lines": [
     "Across the bridge (Ramuh text) > Down the vine (optional) > Tell Ramuh you give up",
     "Lindblum: north hugging the left > Up-right to the centre",
     "Into the synth shop",
     "Synth 1 Exploda",
-    "# Then Cid's aide, out through the Dragon's Gate"
-   ]
-  },
-  {
-   "disc": 2,
-   "type": "menu",
-   "title": "Dragon's Gate Shop 2",
-   "lines": [
+    "# Then Cid's aide, out through the Dragon's Gate",
     "Buy",
     "  1 Mythril Helm",
     "  1 Adaman Vest",
-    "  11 Soft"
-   ]
-  },
-  {
-   "disc": 2,
-   "type": "menu",
-   "title": "Qu's Marsh",
-   "lines": [
+    "  11 Soft",
     "Grab a loose frog > Give it to Quina",
     "Name Quina: CHEF, WINKY or himHOP",
     "Zidane: Optimize",
@@ -1129,19 +1068,12 @@
   },
   {
    "disc": 2,
-   "type": "menu",
-   "title": "After Lani",
+   "type": "move",
+   "title": "After Lani to Conde Petie",
    "lines": [
     "Revive and Cure all with Garnet",
     "Zidane: Germinas Boots",
-    "Zidane: Alert"
-   ]
-  },
-  {
-   "disc": 2,
-   "type": "move",
-   "title": "Fossil Roo to Conde Petie",
-   "lines": [
+    "Zidane: Alert",
     "Every stop: grab a flower, feed the gargant",
     "Up the bridge > Right past the miner > Dock > Right",
     "Switch 1 (1st option) > Left to the end and back > Up",
@@ -1195,7 +1127,8 @@
     "  1 Ritual Hat",
     "  1 Magician Cloak"
    ],
-   "inside": true
+   "inside": true,
+   "screen": 1456
   },
   {
    "disc": 2,
@@ -1208,7 +1141,8 @@
     "  2 Desert Boots",
     "  1 Coral Ring"
    ],
-   "inside": true
+   "inside": true,
+   "screen": 1455
   },
   {
    "disc": 2,
@@ -1255,20 +1189,13 @@
   },
   {
    "disc": 2,
-   "type": "menu",
-   "title": "After Hilgigars",
+   "type": "move",
+   "title": "After Hilgigars to the Iifa Tree",
    "lines": [
     "Zidane: Butterfly Sword, Germinas Boots",
     "Zidane: Alert",
     "@Zidane: Protect Girls 17",
-    "# At 17 AP: Zidane: Rune Tooth (before the Iifa elevator)"
-   ]
-  },
-  {
-   "disc": 2,
-   "type": "move",
-   "title": "Madain Sari to the Iifa Tree",
-   "lines": [
+    "# At 17 AP: Zidane: Rune Tooth (before the Iifa elevator)",
     "Out down-right and back to the fountain; cooking: any options",
     "Left: Vivi, try the house > Entrance: Garnet > North x2: Eidolon Wall",
     "Kitchen: bowl to Eiko, right into the kitchen",
@@ -1297,18 +1224,11 @@
   },
   {
    "disc": 2,
-   "type": "move",
+   "type": "menu",
    "title": "Iifa Tree bottom",
    "lines": [
     "1x Elixir (hidden chest: bottom of the stairs)",
-    "1x Brigandine (hidden chest: behind the wall at the front)"
-   ]
-  },
-  {
-   "disc": 2,
-   "type": "menu",
-   "title": "Before Soulcage",
-   "lines": [
+    "1x Brigandine (hidden chest: behind the wall at the front)",
     "Zidane: Butterfly Sword, Glass Armlet, Brigandine",
     "Zidane: -Insomniac, Ability Up",
     "Heal if needed"
@@ -1341,22 +1261,15 @@
   },
   {
    "disc": 2,
-   "type": "menu",
-   "title": "Outside the Iifa Tree",
+   "type": "move",
+   "title": "Outside the Iifa Tree & Madain Sari",
    "lines": [
     "Zidane: Optimize",
     "# Rune Tooth / Ritual Hat / Bone Wrist / Brigandine / Power Belt",
     "Eiko: Bandana, Adaman Vest, Ruby",
     "Eiko: Antibody, Insomniac",
     "Zidane: MP Attack, Counter",
-    "Vivi: Insomniac, Antibody, Clear Headed"
-   ]
-  },
-  {
-   "disc": 2,
-   "type": "move",
-   "title": "Madain Sari again",
-   "lines": [
+    "Vivi: Insomniac, Antibody, Clear Headed",
     "Eiko's house: through the kitchen, down the stairs",
     "Zidane: Eidolon Wall",
     "Moogles bring loot, THEN ask the moogle for a heal"
@@ -1413,34 +1326,17 @@
   {
    "disc": 3,
    "type": "menu",
-   "title": "Alexandria Synth",
+   "title": "Alexandria to Steiner & Beatrix",
    "lines": [
     "Vivi: alley, down the stairs to Ruby's",
     "Zidane: city centre, synth shop (right)",
-    "Synth",
-    "  1 Angel Bless",
-    "  1 Glass Buckle",
-    "  1 Power Belt"
-   ]
-  },
-  {
-   "disc": 3,
-   "type": "move",
-   "title": "Alexandria pickups",
-   "lines": [
+    "[Alexandria Synth]",
     "1x Phoenix Pinion (wheelbarrow), out the north exit",
     "1x Phoenix Pinion (before the boat, left)",
     "?x Gil (before the boat, right)",
     "1x Phoenix Pinion (after the boat, right)",
     "1x Ether (after the boat, left)",
-    "1x Lapis Lazuli (up the stairs behind the fountain) - don't forget!"
-   ]
-  },
-  {
-   "disc": 3,
-   "type": "menu",
-   "title": "Steiner & Beatrix",
-   "lines": [
+    "1x Lapis Lazuli (up the stairs behind the fountain) - don't forget!",
     "Win the first two matches",
     "Third match: winning gives the Rebirth Ring",
     "# Bad cards: remove them all, Dr. Tot gives new ones",
@@ -1453,6 +1349,19 @@
     "Beatrix back row"
    ],
    "backup": "Lost the final? This route assumes a win: switch to the guide's card-tournament-loss notes"
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Alexandria Synth",
+   "lines": [
+    "Synth",
+    "  1 Angel Bless",
+    "  1 Glass Buckle",
+    "  1 Power Belt"
+   ],
+   "inside": true,
+   "screen": 1859
   },
   {
    "disc": 3,
@@ -1476,21 +1385,14 @@
   },
   {
    "disc": 3,
-   "type": "menu",
+   "type": "move",
    "title": "Lindblum (Disc 3)",
    "lines": [
     "1x Egoist's Armlet (chest when Zidane wakes)",
     "Down the stairs: far right guard > Throne room guard > Bedroom: Garnet",
     "Tram to the Shopping District: Weapon Shop",
     "Buy 1 Coral Sword",
-    "# Don't ask the clerk about the Potion"
-   ]
-  },
-  {
-   "disc": 3,
-   "type": "move",
-   "title": "Lindblum potions",
-   "lines": [
+    "# Don't ask the clerk about the Potion",
     "1x Beautiful Potion (lady in white outside the weapon shop)",
     "1x Unusual Potion (Cinna, Tantalus hideout)",
     "1x Lapis Lazuli (artist's house)",
@@ -1526,26 +1428,13 @@
   {
    "disc": 3,
    "type": "menu",
-   "title": "Oeilvert shop & menu (split, 1 Ogre killed)",
+   "title": "Oeilvert (split: 1 Ogre killed)",
    "lines": [
     "Airship; then turn round, past Qu's Marsh and the mountain, round the forest",
     "Sort items, Gysahl Greens on the footprints",
     "Chocobo past the airship, through the mountains to Oeilvert",
     "Moogle on your right outside: shop",
-    "Sell all Magus Hat, Bronze Helm, Leather Plate, Germinas Boots, Yellow Scarf",
-    "Sell all Chain Plate, Desert Boots, Angel Earrings, Phoenix Pinion, Tent, Butterfly Sword",
-    "Sell gems except Diamond, Aquamarine, Lapis Lazuli",
-    "Buy",
-    "  2 Silver Fork",
-    "  1 Trident",
-    "  1 Magic Racket",
-    "  2 Diamond Gloves",
-    "  1 Judo Uniform",
-    "  1 Mantra Band",
-    "  1 Dark Hat",
-    "  2 Green Beret",
-    "  1-2 Annoyntment",
-    "  ?x Hi-Potion",
+    "[Oeilvert Shop]",
     "Zidane: Optimize",
     "# Angel Bless / Green Beret / Bone Wrist / Judo Uniform / Power Belt",
     "Zidane: Lapis Lazuli",
@@ -1560,17 +1449,13 @@
     "Freya: MP Attack, Bird Killer, -Cover, -Level Up, Clear Headed, Counter",
     "Freya: -Man Eater (only if she has just 25 stones)"
    ],
-   "backup": "Annoyntments: for Trouble in Oeilvert. Hi-Potions: as many as you can / No Ogre killed yet? Shift+F5: the whole menu comes before the Gaia Gear instead"
+   "backup": "No Ogre killed yet? Shift+F5: the whole menu comes before the Gaia Gear instead"
   },
   {
    "disc": 3,
    "type": "menu",
-   "title": "Oeilvert shop (no Ogre yet)",
+   "title": "Oeilvert Shop",
    "lines": [
-    "Airship; then turn round, past Qu's Marsh and the mountain, round the forest",
-    "Sort items, Gysahl Greens on the footprints",
-    "Chocobo past the airship, through the mountains to Oeilvert",
-    "Moogle on your right outside: shop",
     "Sell all Magus Hat, Bronze Helm, Leather Plate, Germinas Boots, Yellow Scarf",
     "Sell all Chain Plate, Desert Boots, Angel Earrings, Phoenix Pinion, Tent, Butterfly Sword",
     "Sell gems except Diamond, Aquamarine, Lapis Lazuli",
@@ -1584,12 +1469,50 @@
     "  1 Dark Hat",
     "  2 Green Beret",
     "  1-2 Annoyntment",
-    "  ?x Hi-Potion",
+    "  ?x Hi-Potion"
+   ],
+   "backup": "Annoyntments: for Trouble in Oeilvert. Hi-Potions: as many as you can",
+   "inside": true,
+   "screen": 2250
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Oeilvert (no Ogre yet)",
+   "lines": [
+    "Airship; then turn round, past Qu's Marsh and the mountain, round the forest",
+    "Sort items, Gysahl Greens on the footprints",
+    "Chocobo past the airship, through the mountains to Oeilvert",
+    "Moogle on your right outside: shop",
+    "[Oeilvert Shop]",
     "# No menu here: the full one comes before the Gaia Gear"
    ],
    "alt": true,
-   "when": "pick",
-   "backup": "Annoyntments: for Trouble in Oeilvert. Hi-Potions: as many as you can"
+   "when": "pick"
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Oeilvert Shop",
+   "lines": [
+    "Sell all Magus Hat, Bronze Helm, Leather Plate, Germinas Boots, Yellow Scarf",
+    "Sell all Chain Plate, Desert Boots, Angel Earrings, Phoenix Pinion, Tent, Butterfly Sword",
+    "Sell gems except Diamond, Aquamarine, Lapis Lazuli",
+    "Buy",
+    "  2 Silver Fork",
+    "  1 Trident",
+    "  1 Magic Racket",
+    "  2 Diamond Gloves",
+    "  1 Judo Uniform",
+    "  1 Mantra Band",
+    "  1 Dark Hat",
+    "  2 Green Beret",
+    "  1-2 Annoyntment",
+    "  ?x Hi-Potion"
+   ],
+   "backup": "Annoyntments: for Trouble in Oeilvert. Hi-Potions: as many as you can",
+   "inside": true,
+   "screen": 2250
   },
   {
    "disc": 3,
@@ -1680,7 +1603,7 @@
   {
    "disc": 3,
    "type": "menu",
-   "title": "After Ark",
+   "title": "After Ark & the Desert Palace",
    "lines": [
     "# In this order, BEFORE the Gulug Stone",
     "Freya: Diamond, Linen Cuirass",
@@ -1688,14 +1611,7 @@
     "# Fork / Dark Hat / Egoist's Armlet / Gaia Gear",
     "Quina: Coral Ring",
     "Freya: Level Up (only if short on EXP)",
-    "# Then grab the Gulug Stone"
-   ]
-  },
-  {
-   "disc": 3,
-   "type": "menu",
-   "title": "Desert Palace (Cid & Eiko)",
-   "lines": [
+    "# Then grab the Gulug Stone",
     "1x Gulug Stone (altar)",
     "Right: Hedgehog Pie game (fail it 5 times on purpose: no quick turns)",
     "Weights on the scales: B, C, D",
@@ -1757,26 +1673,14 @@
   {
    "disc": 3,
    "type": "menu",
-   "title": "To Esto Gaza",
+   "title": "Esto Gaza & Mount Gulug",
    "lines": [
     "Zidane needs 8 AP before the Red Dragons menu (4 from enemies with Ability Up)",
     "# Single Ogres on the Hilda Garde screen, or a Garuda at Esto Gaza",
     "Kuja's room: no party change (cancel)",
     "Bottom warp > Exit the old guard blocked > Kick the switch, climb down, left",
     "Blue Narciss: Zidane, Steiner, Vivi, Amarant (wait if you still need a Garuda)",
-    "Buy",
-    "  1 Flame Saber",
-    "  1 Octagon Rod",
-    "  3 Rising Sun",
-    "  1 Egoist's Armlet",
-    "Buy 1 Remedy, 11 Hi-Potion, 11 Phoenix Down (only if low)"
-   ]
-  },
-  {
-   "disc": 3,
-   "type": "menu",
-   "title": "Before the Red Dragons",
-   "lines": [
+    "[Esto Gaza Shop]",
     "Left at the entrance: house",
     "9693x Gil (bottom right corner inside)",
     "Right to the well rope, slide down",
@@ -1793,6 +1697,21 @@
     "Steiner: Level Up",
     "Zidane back row"
    ]
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Esto Gaza Shop",
+   "lines": [
+    "Buy",
+    "  1 Flame Saber",
+    "  1 Octagon Rod",
+    "  3 Rising Sun",
+    "  1 Egoist's Armlet",
+    "Buy 1 Remedy, 11 Hi-Potion, 11 Phoenix Down (only if low)"
+   ],
+   "inside": true,
+   "screen": 2303
   },
   {
    "disc": 3,
@@ -1918,8 +1837,8 @@
   },
   {
    "disc": 3,
-   "type": "menu",
-   "title": "After Taharka",
+   "type": "move",
+   "title": "After Taharka & the Earth Shrine",
    "lines": [
     "# At the entrance screen, before rejoining the others",
     "Vivi: Mage Staff, -All",
@@ -1931,14 +1850,7 @@
     "Steiner: Diamond Gloves, Iron Helm, Coral Sword, Coral Ring",
     "Freya: -Power Belt",
     "Steiner: Level Up",
-    "Zidane: -Alert, -Ability Up, -Antibody, Counter, Auto-Regen"
-   ]
-  },
-  {
-   "disc": 3,
-   "type": "move",
-   "title": "Earth Shrine",
-   "lines": [
+    "Zidane: -Alert, -Ability Up, -Antibody, Counter, Auto-Regen",
     "Back in: fall down the top pit, talk to Amarant, leave",
     "Party: Zidane, Amarant, Vivi, Quina",
     "Earth Shrine: jump at the (!)s, place the mirror"
@@ -1965,7 +1877,7 @@
   {
    "disc": 3,
    "type": "menu",
-   "title": "Terra entrance",
+   "title": "Terra & Bran Bal",
    "lines": [
     "Airship party: Zidane, Dagger, Eiko, Quina",
     "Fly to the shimmering isle",
@@ -1973,17 +1885,7 @@
     "First net: left, jump the gap, climb down",
     "1x Demon's Vest (chest at the bottom)",
     "Menu BEFORE the FMV where Garnet collapses",
-    "Quina: -All",
-    "Eiko: -Wrist, -Armor",
-    "Dagger: -Armor, -Hat, Feather Boots",
-    "Eiko: Multina Racket"
-   ]
-  },
-  {
-   "disc": 3,
-   "type": "move",
-   "title": "Bran Bal",
-   "lines": [
+    "[Terra entrance]",
     "Party: anyone for Garnet's spot",
     "Left: inn > Zidane: door straight north > Right, down the stairs",
     "1x Elixir (hidden (!) straight down)",
@@ -1991,26 +1893,23 @@
     "1x Elixir (chest at the back of the inn)",
     "1x Angel Earrings (hidden (!) by the pool, right)",
     "Right: small shop",
-    "1x Wing Edge (chest), then the moogle"
-   ]
-  },
-  {
-   "disc": 3,
-   "type": "menu",
-   "title": "Bran Bal Shop",
-   "lines": [
+    "1x Wing Edge (chest), then the moogle",
     "Sell all Magician Shoes, Angel Earrings",
-    "Buy 2 Coronet"
+    "Buy 2 Coronet",
+    "Buy 1 Orichalcon (unless you stole one from Taharka)"
    ]
   },
   {
    "disc": 3,
    "type": "menu",
-   "title": "Bran Bal: Orichalcon",
+   "title": "Terra entrance",
    "lines": [
-    "Buy 1 Orichalcon"
+    "Quina: -All",
+    "Eiko: -Wrist, -Armor",
+    "Dagger: -Armor, -Hat, Feather Boots",
+    "Eiko: Multina Racket"
    ],
-   "when": "Orichalcon < 1"
+   "inside": true
   },
   {
    "disc": 3,
@@ -2089,18 +1988,27 @@
   },
   {
    "disc": 3,
-   "type": "menu",
+   "type": "move",
    "title": "Pandemonium moogle",
    "lines": [
     "Heal Zidane to full",
     "Dagger: -Feather Boots",
-    "# Amdusias screen: party Zidane, Freya, Steiner, Amarant"
-   ]
+    "# Amdusias screen: party Zidane, Freya, Steiner, Amarant",
+    "[Pandemonium: before shopping]",
+    "[Pandemonium Shop]",
+    "[Pandemonium equipment]",
+    "Left: Pillar Maze; switch, then the path (pause at the first point for the lights)",
+    "Cross the bridge before time runs out",
+    "Eyeball switch: 4",
+    "Elevators, then straight down: bottom left teleporter",
+    "# Paths: see the guide's pictures"
+   ],
+   "backup": "Phoenix Downs: as many as you can"
   },
   {
    "disc": 3,
    "type": "menu",
-   "title": "Pandemonium equip & shop",
+   "title": "Pandemonium: before shopping",
    "lines": [
     "# Before shopping:",
     "Freya: Partisan, -Diamond Helm, -Plate Mail, -Power Belt",
@@ -2111,7 +2019,15 @@
     "Steiner: Optimize",
     "# Flame Saber / Diamond Helm / Venetia Shield / Shield Armor / Ribbon",
     "Steiner: Broadsword",
-    "Freya front row",
+    "Freya front row"
+   ],
+   "inside": true
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Pandemonium Shop",
+   "lines": [
     "Sort items",
     "Sell all except: Potion, Hi-Potion, Phoenix Down, Ether, Elixir, Remedy, Soft, Annoyntment, Eye Drops, Echo Screen, Antidote, Vaccine, Magic Tag, Gysahl Greens, Glass Armlet, N-Kai Armlet, Jade Armlet, Diamond Gloves, Mantra Band, Lamia's Tiara, Barbut, Mythril Helm, Cross Helm, Diamond, Rebirth Ring, Power Belt",
     "# Keep just 1 Lamia's Tiara; sell every weapon and every top",
@@ -2122,7 +2038,15 @@
     "  1 Minerva's Plate",
     "  1 Platina Armor",
     "  51 Hi-Potion",
-    "  ?x Phoenix Down",
+    "  ?x Phoenix Down"
+   ],
+   "inside": true
+  },
+  {
+   "disc": 3,
+   "type": "menu",
+   "title": "Pandemonium equipment",
+   "lines": [
     "Zidane: Optimize",
     "# Orichalcon / Coronet / Jade Armlet / Power Vest / Power Belt",
     "Freya: Optimize",
@@ -2139,19 +2063,7 @@
     "Steiner: Man Eater, Counter, Accuracy+",
     "Amarant: MP Attack, Bird Killer, Man Eater, Locomotion, -Clear Headed, Counter"
    ],
-   "backup": "Phoenix Downs: as many as you can"
-  },
-  {
-   "disc": 3,
-   "type": "move",
-   "title": "Pandemonium",
-   "lines": [
-    "Left: Pillar Maze; switch, then the path (pause at the first point for the lights)",
-    "Cross the bridge before time runs out",
-    "Eyeball switch: 4",
-    "Elevators, then straight down: bottom left teleporter",
-    "# Paths: see the guide's pictures"
-   ]
+   "inside": true
   },
   {
    "disc": 3,
@@ -2233,7 +2145,7 @@
   {
    "disc": 4,
    "type": "menu",
-   "title": "Before Maliris",
+   "title": "Before Maliris & Memoria",
    "lines": [
     "Zidane: -Power Belt",
     "Amarant: Optimize",
@@ -2246,14 +2158,7 @@
     "Zidane: -Bird Killer, Alert, -Counter, Protect Girls, Body Temp, -Man Eater, Devil Killer",
     "Freya: -Distract, -Bird Killer, Body Temp, Ability Up, Devil Killer",
     "Steiner: Devil Killer, Body Temp, -Ability Up",
-    "Amarant: -Counter, Body Temp, Devil Killer"
-   ]
-  },
-  {
-   "disc": 4,
-   "type": "menu",
-   "title": "Memoria",
-   "lines": [
+    "Amarant: -Counter, Body Temp, Devil Killer",
     "Random fight on the way: KO everyone not in yellow HP (not Zidane)",
     "# Then Phoenix Down them outside battle: yellow HP for Charge!",
     "Up two screens, round the circle, up the zigzag steps",
@@ -2392,7 +2297,7 @@
   {
    "disc": 4,
    "type": "menu",
-   "title": "After Lich",
+   "title": "After Lich & before Deathguise",
    "lines": [
     "1x Excalibur II (hidden (!), right pillar)",
     "Revive, heal Zidane, Ether the party",
@@ -2404,14 +2309,7 @@
     "Steiner: Optimize",
     "# Excalibur II / Diamond Helm / Venetia Shield / Platina Armor / Ribbon",
     "Steiner: Mythril Helm",
-    "Zidane back row"
-   ]
-  },
-  {
-   "disc": 4,
-   "type": "menu",
-   "title": "Before Deathguise",
-   "lines": [
+    "Zidane back row",
     "Up, then hold Up to Crystal World",
     "Hold Up on the first screen > Hold Left, out left-down",
     "Down round the curve, out upper left",

@@ -106,7 +106,7 @@ def step_report(route: dict, learned=None) -> list[dict]:
     steps = r["steps"]
     out = []
     for i, s in enumerate(steps):
-        screen = learned.field(_key(s), name)
+        screen = s.get("screen") if s.get("screen") is not None else learned.field(_key(s), name)
         if s["type"] == "boss":
             known = fight_known(r, learned, i)
             n = int(s.get("fights") or 1)
@@ -128,7 +128,7 @@ def step_report(route: dict, learned=None) -> list[dict]:
                         + (" and the menu is closed" if menu else ""))
         nxt = _after(steps, i, FIELD_LOOKAHEAD)
         for j in nxt:
-            f = learned.field(_key(steps[j]), name)
+            f = steps[j].get("screen") if steps[j].get("screen") is not None else learned.field(_key(steps[j]), name)
             if f is not None and f != screen:
                 ways.append(f"on reaching {field_name(f)}, where step {j + 1} starts")
                 break

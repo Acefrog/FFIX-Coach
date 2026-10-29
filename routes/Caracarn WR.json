@@ -1,0 +1,13 @@
+{
+ "name": "Caracarn WR",
+ "steps": [
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "Start",
+   "lines": [
+    "Your first step"
+   ]
+  }
+ ]
+}

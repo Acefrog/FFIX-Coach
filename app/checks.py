@@ -248,8 +248,13 @@ class ChecksMixin:
             self.tick_step, self.shop_ticked = self.step, set()
         picked = set(self._pickups_done(self.step))
         pick_lines = {i for i, _ in pickup_targets(_pickup_lines(s))}
+        subs = {(self.steps[j].get("title") or "").strip().lower(): j for j in self.inside_of(self.step)}
         for i, line in enumerate(check_lines(s)):
-            if i in pick_lines:
+            call = substep_call(line)
+            if call:                                   # "[Treno Shop]": done once that sub-step is
+                j = subs.get(call.lower())
+                st = None if j is None else j in self.inside_done
+            elif i in pick_lines:
                 st = i in picked
             elif i in self.shop_ticked:
                 st = True
@@ -268,8 +273,8 @@ class ChecksMixin:
 
     def _enter_called_sub(self, state: GameState) -> None:
         """A walk or menu sub-step the step calls ("[Side room]") comes up by itself once
-        every line written above the call is done. (Fight sub-steps come up with their fight.)"""
-        from syntax import substep_call
+        every line written above the call is done; one with its own screen typed in the route
+        (a shop) only when you're there. (Fight sub-steps come up with their fight.)"""
         s = self.current()
         subs = {(self.steps[j].get("title") or "").strip().lower(): j for j in self._pending_inside(self.step)}
         lines = check_lines(s)
@@ -280,6 +285,10 @@ class ChecksMixin:
                 continue
             if self.steps[j]["type"] == "boss":
                 return                                 # its fight brings it up
+            if self.steps[j].get("screen") is not None:
+                if self.field_cur == int(self.steps[j]["screen"]):
+                    self._goto(j, manual=False, why=f"in {self.steps[j].get('title')}")
+                return                                 # otherwise reaching its screen brings it up
             done = set(self._menu_progress(state)[0])
             for i in range(k):
                 if is_optional(lines[i]) or i in done:
@@ -360,7 +369,8 @@ class ChecksMixin:
 
     def _track_menu(self, state: GameState) -> None:
         """Move on from a walk or menu step once every line the coach can check is done:
-        after the menu is closed again if there's equipment, abilities or rows on it,
+        with the menu closed, once it has been opened on this step, if there's equipment,
+        abilities or rows on it (pickups written after the menu can finish it then too);
         straight away if it's only pickups and shopping."""
         s = self.current()
         if self.in_battle or s["type"] == "boss":
@@ -370,6 +380,7 @@ class ChecksMixin:
         # finished when you came back to it (F7, or a savestate from before) stays put.
         if self._entry_step != self.step:
             self._entry_step = self.step
+            self.menu_opened_on = None
             # Back from a fight in the middle of this step: what was done before it counts.
             self._entry_done = 0 if self._back_to_parent == self.step else len(self._menu_progress(state)[0])
             self._back_to_parent = None
@@ -390,9 +401,8 @@ class ChecksMixin:
         if state.menu_vote:
             self.menu_opened_on = self.step
             return
-        if self.menu_opened_on == self.step:
+        if self.menu_opened_on == self.step:              # the menu was used here and is closed
             done, todo, n = self._menu_progress(state)
-            self.menu_opened_on = None
             if n and todo is None and len(done) > self._entry_done and self.step + 1 < len(self.steps) \
                     and not (s["type"] == "move" and instructions_after_checks(step_lines(s))):
                 # (more to do written after the last ticked line: the next screen or F8 moves on)
@@ -420,17 +430,18 @@ class ChecksMixin:
         for i, line in enumerate(check_lines(s)):
             if is_optional(line) or (s["type"] == "move" and instructions_after_checks(step_lines(s))):
                 continue
-            if i in pick or self._menu_line_state(line, state) is not None:
+            if i in pick or substep_call(line) or self._menu_line_state(line, state) is not None:
                 return False
         i = self.step
         for _ in range(FIELD_LOOKAHEAD):
             j = self._step_by(i, 1)
             if j == i:
                 break
-            if self.learned.field(self.step_key(self.steps[j]), self.rname) not in (None,) + NO_SCREEN:
+            if self._start_screen(j) not in (None,) + NO_SCREEN:
                 return False
             i = j
-        nxt = self.steps[self._next_index(self.step)]
-        if nxt["type"] == "boss" and (self.bosses.get(nxt["boss"], {}).get("hp") or self._learned_form(self._next_index(self.step))):
+        k = self._next_index(self.step, skip_pending=True)    # the step after it (past its sub-steps)
+        nxt = self.steps[k]
+        if nxt["type"] == "boss" and (self.bosses.get(nxt["boss"], {}).get("hp") or self._learned_form(k)):
             return False
         return True
