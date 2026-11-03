@@ -17,6 +17,7 @@ class FieldsMixin:
         f = state.field_id
         if f is None or f in NO_SCREEN or f >= MAX_SCREEN:
             return                                     # FMVs, loading, title: not a place
+        self.field_read_at = now
         if f != self.field_cur:
             self.field_cur, self.field_since = f, now
             return
@@ -45,6 +46,11 @@ class FieldsMixin:
                 self.field_handled = f
 
         if f == self.field_handled:
+            return
+        end = self.current().get("end_screen")
+        if end is not None and f == int(end) and self.current()["type"] != "boss":
+            self.field_handled = f                     # its finish screen (picked in the editor): done
+            self._step_done(f"reached {field_name(f)}")
             return
         # A walk/menu sub-step's own screen (a shop): into it, even with lines above it still
         # to do (they're still there when it's done: it comes back to its step).
@@ -93,7 +99,9 @@ class FieldsMixin:
         """A step a screen can't move you past: a fight not won yet (the step's own, or
         one of its sub-steps'). Fights happen in order, so walking on can't skip one."""
         if self.steps[i]["type"] == "boss" and not self.is_inside(i):
-            return True
+            # Except a step with any number of fights, some won: reaching the next step's
+            # room is how it ends.
+            return not (self._any_count(i) and self._part_way(i) and not self.in_battle)
         return any(self.steps[k]["type"] == "boss" for k in self.inside_of(i) if k not in self.inside_done)
 
     def _jumpable(self) -> list[int]:

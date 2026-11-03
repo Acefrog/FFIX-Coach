@@ -6,9 +6,10 @@ How it moves through the route by itself:
 
 1. In battle or not: from bytes the game changes when a battle starts (learned the
    first time ATB bars move), falling back to watching the ATB bars.
-2. Which fight: the enemies' records (learned the first time a fight step is won),
-   then their starting HP against the HP on the route's fight steps. A fight that
-   matches a step ahead jumps there; anything else is a random encounter.
+2. Which fight: only its HP (typed in the editor, or learned) together with the screen
+   it started from (picked in the editor, or learned each time it's won). A fight that
+   matches a step ahead jumps there; anything else is a random encounter, until F8
+   during it teaches it (its HP and its screen).
 3. Fight won: on to the next step (or back to the step it's in the middle of, or on
    to the step's next fight when it has several).
 4. Walk and menu steps: each line that can be checked (pickups, shopping, equipment,
@@ -34,9 +35,11 @@ import json
 import time
 from pathlib import Path
 
+from field_names import field_name
 from memory import GameState
 from tuning import (ATB_DROP, CAPPED_HP, CAPPED_SETTLE, CLEARED_SECONDS, IDENTIFY_WITHIN, IGT_BACK,
-                    IGT_MAX_STEP, IGT_NEW_GAME, IGT_RESET_CONFIRM, IGT_TRUST, SCRIPT_HP, STALE_SECONDS,
+                    IGT_MAX_STEP, IGT_NEW_GAME, IGT_RESET_CONFIRM, IGT_TRUST,
+                    LOADING_HP, LOOKAHEAD_STEPS, MAX_SCREEN, NO_SCREEN, SCRIPT_HP, STALE_SECONDS,
                     UNDO_WINDOW)
 from steps import _bars_filling, _step_moves, step_key
 from learned import Learned
@@ -47,9 +50,9 @@ from checks import ChecksMixin
 from view import View, ViewMixin
 
 # Everything other files import from here (the editor, overlay, report, tests).
-from branches import (AP_OPS, OPS, _NOT, ap_subject, ap_subjects, compare, parse_conds,  # noqa: F401
+from branches import (AP_OPS, OPS, ap_subject, ap_subjects,  # noqa: F401
                       parse_when, route_branches, when_label, when_text)
-from steps import check_lines, formation_of, hp_candidates, step_lines  # noqa: F401
+from steps import hp_candidates  # noqa: F401
 from syntax import (line_segments, menu_checks, old_off_line, pickup_targets, row_check,  # noqa: F401
                     shop_check, steal_targets)
 from tuning import *  # noqa: F401,F403
@@ -69,7 +72,6 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
         self.progress_path = progress_path
         self.learned = Learned(learned_path)
         self.step = 0
-        self.turn = 0
         self.encounters: list[int] = []        # in-game time of each random battle this run
         self.resets = 0                        # how many resets / new games were seen
         self._igt_last: int | None = None
@@ -112,14 +114,9 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
         self.active_party: set[int] = set()
         self.identified = False
         self.battle_cleared = False
-        self.battle_tentative = False
         self.battle_random_possible = True
         self.battle_counted = False
         self._ident_form: list[int] = []
-        self.battle_id_now: int | None = None           # FF9's number for the fight you're in
-        self._blk_start: list[bytes] = []               # enemy records when the fight started
-        self._blk_now: list[bytes] = []
-        self._blk_dyn: list[set] = []                   # bytes in them that changed this fight
         self._bag_prev: dict[int, int] | None = None   # bag on the last read (pickups)
         self._battle_end_at = -1e9
         self._gil_prev: int | None = None
@@ -128,16 +125,17 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
         self._enc_flag_field: bool | None = None       # random battles possible here (last field read)
         self._enc_flag_seen: set[bool] = set()          # values that flag has shown
         self.battle_start_time = 0.0
+        self.battle_field: int | None = None      # the screen the fight you're in started from
+        self.battle_by_hand = False               # the fight was put on its step with F8/F7: it teaches nothing
+        self._left_multi: int | None = None       # the several-fight step the route just moved on from
+        self._extra_return: int | None = None     # one more of its fights: the step to go back to after
         self.pre_battle_step = 0
         self.last_end: tuple[list[int], int, float] | None = None  # formation, step, time
         self.sub = 0                    # fights already won on this step (steps with several fights)
         self._last_end_sub = False      # the last win only moved on to the step's next fight
-        self._last_learned: str | None = None
         self.inside_done: set[int] = set()  # fights inside a step (Baku in Crash Site) already won
         self._end_dest: int | None = None   # where the last won fight sent you (F7 undoes it)
         self._back_to_parent: int | None = None
-        self.learned_this_session: set[str] = set()
-        self._skip_teach = False
         self.events: list[str] = []          # lines for logs/run_log.txt
         self.branch_choice: dict[str, str] = {}   # branch group -> the branch you're on
         self.branch_at: dict[str, int] = {}       # branch group -> game timer when it was decided
@@ -167,6 +165,7 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
         # field
         self.field_cur: int | None = None
         self.field_since = 0.0
+        self.field_read_at = -1e9            # when the screen was last read (it's stale after a load)
         self.field_handled: int | None = None
         self._pending_field_learn: tuple[int, bool] | None = (self.step, False)
         self._pending_screen: int | None = None
@@ -250,7 +249,6 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
         self.step, self.encounters, self.stolen, self.picked = saved
         self._entry_step = None
         self.resets = max(0, self.resets - 1)
-        self.turn = 0
         self.message = ""
         self._save_progress()
 
@@ -291,6 +289,7 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
         self.branch_choice = {}
         self.branch_at = {}
         self.message = "Reset: back to the start of the route"
+        self.loaded_at = self._now                     # (the screen read before it isn't where you are)
         self._goto(0, manual=False, why="reset / new game")
 
     def _count_encounter(self, igt: int) -> None:
@@ -316,7 +315,6 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
             self.step = where[old_step]
         else:
             self.step = max(0, min(old_step, len(self.steps) - 1))
-        self.turn = min(self.turn, 99)
         self._follow_moves(where)
         self.last_end = None
         self._save_progress()
@@ -371,18 +369,23 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
             self._event(f"step {self._label(old)} -> {self._label(self.step)}"
                         f" ({why or ('by hand' if manual else 'auto')})")
         self.sub = 0
-        self.turn = 0
         if self.step != old:
             self.groups_done = {}
         self._fresh_subs(old)
         if not back:
             self._settle_branch()                      # (going back doesn't decide a branch)
-        # Learn where this step starts. Not after going back (F7: you're past it, so the
-        # screen you're on isn't its start), and not for sub-steps (they're found by their
-        # fight or lines, not their screen). Set here too when the step changes during a
-        # fight (a win), so the step before doesn't learn the screen after the fight.
-        if not back and not (self.is_inside(self.step) and self.current()["type"] == "boss"):
-            self._pending_field_learn = (self.step, manual)
+        # A step with several fights the route moved on from: one more of them straight
+        # after is that fight, not a random battle (a route with more of them than it says).
+        left_multi = (not back and not manual and self.steps[old]["type"] == "boss"
+                      and (self._fights(old) > 1 or bool(self._groups(old))))
+        self._left_multi = old if left_multi else (None if self.steps[self.step]["type"] == "boss" or manual
+                                                   else self._left_multi)
+        # Learn where this step starts when the route got here by itself. Not after a key
+        # (F8, F7: moving by hand teaches nothing; the Learn key does that), and not for fight
+        # sub-steps (their fight brings them up). Set here too when the step changes during
+        # a fight (a win), so the step before doesn't learn the screen after the fight.
+        if not back and not manual and not (self.is_inside(self.step) and self.current()["type"] == "boss"):
+            self._pending_field_learn = (self.step, False)
         else:
             self._pending_field_learn = None
         self._pending_screen = None
@@ -391,73 +394,97 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
             # Going back during a fight (often on the victory screen, right after the
             # coach moved on): this fight must not move the route forward again.
             self.battle_is_boss = False
-            self.battle_tentative = False
             self.hold_route = True
         elif self.in_battle:
-            # A correction during a fight: re-label this fight and remember it.
+            # Moved during a fight: this fight goes with the step you're on now (by hand it
+            # learns nothing, not even when won: the Learn key does that).
             self.battle_is_boss = self.current()["type"] == "boss"
             if self.battle_is_boss and manual:
-                self.battle_tentative = False
                 self.identified = True
-                form = self._formation()
-                if self._hp_fits(self.step, form) is False:
-                    # F8 in a fight whose HP isn't the fight typed for this step: go along
-                    # with it this time, but don't learn it (a stray F8 can't spoil the step).
-                    self._event(f"not learned: HP {form} doesn't fit {self._label(self.step)}'s typed HP")
-                    form = None
-                    self._skip_teach = True
-                if form:
-                    self.learned.set_formation(self._lkey(), form, self.battle_random_possible)
-                    self.learned_this_session.add(self._lkey())
-                    self._event(f"learned: HP {form} is {self._label(self.step)}")
-                if not self._skip_teach:
-                    if self.battle_id_now and self._fights(self.step) == 1:
-                        self.learned.set_battle_id(self.current()["boss"], self.battle_id_now)
-                    fp = self._fingerprint()
-                    if fp:
-                        self.learned.set_fingerprint(self._lkey(), fp)
-                self._skip_teach = False
+                self.battle_by_hand = True
 
+
+    # -- the Learn key: teach what it can't work out here, without moving the route --------
+    def learn(self) -> None:
+        """In a fight: this is the fight of the fight step you're on (or the next one ahead):
+        its HP and the screen it started from are learned, and it counts from now on, so
+        winning it moves on as usual. Elsewhere: the screen you're on is where the next
+        step starts (or a sub-step of this one, such as a shop), and the route moves on by
+        itself as it would on any screen it knows."""
+        if self.in_battle:
+            self._learn_this_fight()
+        else:
+            self._learn_this_screen()
+        self._save_progress()
+
+    def _learn_this_fight(self) -> None:
+        if not self.identified and self.prev is not None:
+            self._identify(self.prev, self._now)
+        # The fight step you're on, unless its typed HP doesn't fit this fight and a later
+        # one's has every enemy in it (a fight you skipped is passed over; one helper with
+        # the same HP as Plant Spiders doesn't make Steiner 1 that fight). Two fights can have the same HP
+        # (Amdusias and Abadon): then it's the one you're on.
+        form = self._formation()
+        ahead = list(self._boss_steps_ahead(self.step, LOOKAHEAD_STEPS))
+        here = self.current()["type"] == "boss" and self.active(self.step) and self.step not in self.inside_done
+        fits = next((i for i in ahead if form and self._hp_all_typed(i, form)), None)
+        if here and (fits is None or self._hp_fits(self.step, form) is not False):
+            target = self.step
+        else:
+            target = fits if fits is not None else next(iter(ahead), None)
+        if target is None:
+            self.message = "Learn: no fight step ahead for this fight"
+            return
+        if target != self.step:
+            self.step, self.step_since, self.sub = target, self._now, 0
+        self.battle_is_boss, self.identified, self.hold_route = True, True, False
+        if self.battle_counted and self.encounters:
+            self.encounters.pop()                      # it was counted as a random battle
+            self.battle_counted = False
+        k, form = self._lkey(), self._formation()
+        if form and self._hp_fits(self.step, form) is False:
+            # Not the HP typed for this fight: it's taken as the fight this time, but its HP
+            # isn't learned (a stray key press can't spoil the step).
+            self._event(f"not learned: HP {form} doesn't fit {self._label(self.step)}'s typed HP")
+        elif form and self._fights(self.step) > 1:
+            self.learned.add_formation(k, form)
+        elif form:
+            self.learned.set_formation(k, form)
+        self._learn_battle_screen(k)
+        self.script_slots = self._find_script_slots()
+        self._event(f"Learn key: this fight is {self._label(self.step)} (HP {form})")
+        if self.battle_field is None:
+            self.message = f"Learned {self._label(self.step)}'s HP; its room wasn't seen since the load: Learn in it again"
+        else:
+            self.message = f"Learned: {self._label(self.step)} (from {field_name(self.battle_field)})"
+
+    def _learn_this_screen(self) -> None:
+        f = self.field_cur
+        if f is None or f in NO_SCREEN or f >= MAX_SCREEN:
+            self.message = "Learn: this screen can't be read"
+            return
+        # A walk/menu sub-step of this step still to come whose screen isn't known (a shop
+        # you're standing in), else the next step.
+        target = next((j for j in self._pending_inside(self.step)
+                       if self.steps[j]["type"] != "boss" and self._start_screen(j) is None), None)
+        if target is None:
+            target = self._next_index(self.step, skip_pending=True)
+        if target == self.step:
+            self.message = "Learn: no step after this one"
+            return
+        if self.steps[target]["type"] == "boss":
+            self.message = "Learn: the next step is a fight: press Learn during it"
+            return
+        self.learned.set_field(self.step_key(self.steps[target]), f, self.rname)
+        self._event(f"Learn key: {self._label(target)} starts on {field_name(f)}")
+        self.message = f"Learned: {self._label(target)} starts here"
+        self.field_handled = None                      # this screen again: on as usual
 
     def goto(self, index: int, why: str = "by hand") -> None:
         """Manual jump (hotkeys). Teaches the coach."""
         self._goto(index, manual=True, why=why)
 
-    def skip(self, delta: int) -> None:
-        """Shift+F8 / Shift+F7: look through the route. Moves the step and nothing else:
-        no screen, fight or HP is learned or forgotten, and a fight going on now isn't
-        relabelled (it can't move the route on either)."""
-        target = self._step_by(self.step, delta)
-        if delta == 1 and self.is_inside(self.step) and self.parent_of(self.step) is not None:
-            self.inside_done.add(self.step)            # a sub-step: back to its step, as when it's done
-            target = self.parent_of(self.step)
-        elif delta == 1:
-            target = self._next_index(self.step)       # past sub-steps already done
-        if target == self.step:
-            return
-        self._event(f"step {self._label(self.step)} -> {self._label(target)} (Shift skip)")
-        old = self.step
-        self.step, self.sub, self.turn = target, 0, 0
-        self._fresh_subs(old)
-        self.step_since = self._now
-        self._entry_step = None
-        self._pending_field_learn = None
-        self.field_handled = self.field_cur        # the screen you're on doesn't jump you anywhere
-        self.last_end = None                       # F7 won't undo a fight's learning after this
-        if self.in_battle:
-            self.battle_is_boss = False
-            self.battle_tentative = False
-            self.hold_route = True                 # this fight stays out of the route
-        self.message = f"Skipped to step {step_numbers(self.steps)[self.step]}"
-        self._save_progress()
-
     def next_step(self) -> None:
-        if (self.in_battle and self.identified and not self.battle_is_boss and not self.hold_route
-                and self.current()["type"] == "boss" and self._fights(self.step) > 1):
-            # In a fight on a step with several fights that wasn't recognised: this is
-            # one of them. Learn it (as the step's next fight) rather than skip the step.
-            self._confirm_fight()
-            return
         if not self.in_battle and self.is_inside(self.step):
             self.inside_done.add(self.step)            # F8 on a fight inside a step: back to that step
             parent = self.parent_of(self.step)
@@ -467,29 +494,12 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
                 return
         self.goto(self._next_index(self.step, skip_pending=True), why="F8")
 
-    def _confirm_fight(self) -> None:
-        self.battle_is_boss, self.battle_tentative = True, False
-        if self.battle_counted and self.encounters:
-            self.encounters.pop()                      # it was counted as a random battle
-            self.battle_counted = False
-        k = self._lkey()
-        form = self._formation()
-        if form:
-            self.learned.set_formation(k, form, self.battle_random_possible)
-        fp = self._fingerprint()
-        if fp:
-            self.learned.set_fingerprint(k, fp)
-        self.learned_this_session.add(k)
-        self._event(f"F8: this fight learned as fight {self.sub + 1} of {self._label(self.step)}")
-        self.message = f"Fight {self.sub + 1} of {self._fights(self.step)} learned"
-        self._save_progress()
-
     def prev_step(self) -> None:
-        # Undo a wrong automatic "boss done": forget what that fight taught us.
+        # Undo a wrong automatic "boss done" (only the route: what it learned stays; the
+        # editor's Forget removes it).
         if (not self.in_battle and self.last_end
                 and self._now - self.last_end[2] < UNDO_WINDOW
                 and self.step == (self._end_dest if self._end_dest is not None else self.last_end[1] + 1)):
-            self._forget(self._last_learned)
             fight = self.last_end[1]
             self.inside_done.discard(fight)
             self.last_end = None
@@ -498,8 +508,7 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
                 return
         elif (not self.in_battle and self.sub > 0 and self.last_end
                 and self._now - self.last_end[2] < UNDO_WINDOW and self.step == self.last_end[1]):
-            self._forget(self._last_learned)           # a step with several fights: undo the last one
-            self.last_end = None
+            self.last_end = None                       # a step with several fights: undo the last one
             self.sub -= 1
             self._ungroup()
             self._save_progress()
@@ -510,19 +519,6 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
             self._save_progress()
             return
         self.goto(self._step_by(self.step, -1), why="F7")
-
-    def _forget(self, key):
-        if key and key in self.learned_this_session:
-            for part in ("formations", "battle_ids", "fingerprints"):
-                self.learned._put(part, key, None)
-            self.learned.save()
-            self.learned_this_session.discard(key)
-
-    def next_turn(self) -> None:
-        self.turn += 1
-
-    def prev_turn(self) -> None:
-        self.turn = max(0, self.turn - 1)
 
     # ------------------------------------------------------------------
     # Helpers
@@ -657,6 +653,16 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
                     # filling for a moment: same HP as before (or a fight that picked up again).
                     if not same_as_before or (settled and k in self.active_enemy):
                         self.battle_first_hp[k] = h
+                elif (k < len(self.battle_first_hp) and now - self.battle_start_time < CAPPED_SETTLE
+                      and LOADING_HP <= self.battle_first_hp[k] < CAPPED_HP and 0 < h < self.battle_first_hp[k]):
+                    # Near the top of the counter, then a real number: still loading (Steiner 1
+                    # read 65,526, then his 10,169). No hit takes that much in the first seconds.
+                    self.battle_first_hp[k] = h
+                elif (k < len(self.battle_first_hp) and 0 < self.battle_first_hp[k] < h < CAPPED_HP
+                      and now - self.battle_start_time < CAPPED_SETTLE):
+                    # Climbing in the first seconds: the fight was still loading (after a save
+                    # load it read 257, then Shell Dragon's 20,921). Damage only takes HP down.
+                    self.battle_first_hp[k] = h
                 elif (k < len(self.battle_first_hp) and h == CAPPED_HP
                       and SCRIPT_HP <= self.battle_first_hp[k] < CAPPED_HP
                       and now - self.battle_start_time < CAPPED_SETTLE):
@@ -666,7 +672,6 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
                     self.battle_first_hp[k] = CAPPED_HP
                     self._script_cache.pop(k, None)
             self.battle_last_party = list(state.party_hp_slots)
-            self._track_blocks(state)
             if state.battle_sig != self._fight_sig:
                 self._fight_sig_stable = False
             if not self.identified:
@@ -674,10 +679,8 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
                 if (start_live and start_live <= self.active_enemy) \
                         or now - self.battle_start_time >= IDENTIFY_WITHIN:
                     self._identify(state, now)
-            elif (not self.battle_is_boss or self.battle_tentative) and not self.hold_route:
+            elif not self.battle_is_boss and not self.hold_route:
                 self._reidentify()
-            if acted and self.battle_is_boss:
-                self.turn += acted
             real = self._fight_enemies()
             if self.identified and real and all(self._shown_hp(k, state.enemy_hp[k]) == 0 for k in real):
                 self.battle_cleared = True
@@ -686,8 +689,7 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
                 # Boss beaten: move on now rather than waiting for the victory screen
                 # (or a scripted ending) to hand back to the field.
                 if (self.battle_is_boss and not self.hold_route
-                        and now - self.cleared_since >= CLEARED_SECONDS
-                        and not self._too_short_for_boss(now)):
+                        and now - self.cleared_since >= CLEARED_SECONDS):
                     self._finish_boss(now)
                     self.battle_is_boss = False
                     self.won_early = True

@@ -81,6 +81,19 @@ route_pick = ttk.Combobox(root, values=routes.names(), state="readonly", width=3
 route_pick.set(routes.active())
 route_pick.pack(pady=(0, 10))
 route_pick.bind("<<ComboboxSelected>>", pick_route)
+def end_all(p):
+    """End a program this window started, and anything it started in turn: some Python
+    installs run pythonw as a small starter that opens the real Python as its own process."""
+    if sys.platform == "win32":
+        try:
+            subprocess.run(["taskkill", "/PID", str(p.pid), "/T", "/F"], capture_output=True,
+                           creationflags=NO_WINDOW, timeout=10)
+            return
+        except (OSError, subprocess.SubprocessError):
+            pass
+    p.terminate()
+
+
 def stop_coach():
     """Close the coach: it sees this file within a moment and quits (works for a coach
     started earlier too). One this window started is closed for sure after 3 seconds."""
@@ -94,7 +107,7 @@ def stop_coach():
 
     def make_sure():
         if p is not None and p.poll() is None:
-            p.terminate()
+            end_all(p)
         try:
             (HERE / "stop_coach").unlink()
         except OSError:

@@ -4,15 +4,17 @@ the editor, which can make it forget things while the coach runs."""
 from __future__ import annotations
 
 import json
+import re
 
 from pathlib import Path
-from tuning import FORMATION_VERSION
+from fights_data import known_formations, known_screens
+from tuning import BATTLE_SCREENS_KEPT, FORMATION_VERSION
 
 
 class Learned:
     """Things the coach picks up from your runs, saved between sessions."""
 
-    SECTIONS = ("fields", "formations", "fingerprints", "battle_ids", "random_here")
+    SECTIONS = ("fields", "formations", "battle_screens")
 
     def __init__(self, path: Path | None):
         self.path = path
@@ -28,11 +30,21 @@ class Learned:
                 self._mtime = path.stat().st_mtime
             except (ValueError, OSError):
                 pass
+        self._merge_numbered()
         if self.data.get("formation_version") != FORMATION_VERSION:
             # Older versions could learn from fights that weren't real (or from leftover
             # HP in empty slots), and the screens saved alongside them. Start clean.
             self.data.update({"formations": {}, "fields": {}, "battle_fp": None,
                               "fp_unusable": False, "formation_version": FORMATION_VERSION})
+
+    def _merge_numbered(self) -> None:
+        """Rooms used to be kept per fight in order (Mistodons, Mistodons#2...): they're one
+        list now, so a route with more or fewer of those fights finds them all."""
+        screens = self.data.get("battle_screens") or {}
+        for k in [k for k in screens if re.search(r"#\d+$", k)]:
+            base = re.sub(r"#\d+$", "", k)
+            have = list(screens.get(base) or [])
+            screens[base] = (have + [f for f in screens.pop(k) or [] if f not in have])[-BATTLE_SCREENS_KEPT:]
 
     def _put(self, section: str, key: str, value) -> None:
         """Set (or, with None, remove) one learned thing, remembering it was this copy's change."""
@@ -104,8 +116,9 @@ class Learned:
             if k.startswith("move:"):
                 self._put("fields", k.replace("move:", "menu:", 1), None)
         for k in fight_keys or []:
-            for part in ("formations", "fingerprints", "battle_ids"):
-                self._put(part, k, None)
+            for part in ("formations", "battle_screens"):
+                for kk in [k] + [x for x in self.data.get(part) or {} if re.fullmatch(re.escape(k) + r"#\d+", x)]:
+                    self._put(part, kk, None)
         self.save()
 
     # battle code fingerprint
@@ -124,29 +137,44 @@ class Learned:
     def formation(self, boss_id: str) -> list[int] | None:
         return self.data["formations"].get(boss_id)
 
-    def set_formation(self, boss_id: str, formation: list[int], random_here: bool | None = None) -> None:
+    def formations(self, boss_id: str) -> list[list[int]]:
+        """Every set of enemy HP learned for a fight (one with several fights: each kind of
+        line-up seen, Zombies then Dracozombie), then any the fight list has built in."""
+        f = self.data["formations"]
+        keys = [boss_id] + sorted((k for k in f if re.fullmatch(re.escape(boss_id) + r"#\d+", k)),
+                                  key=lambda k: int(k.rsplit("#", 1)[1]))
+        own = [list(f[k]) for k in keys if f.get(k)]
+        return own + [x for x in known_formations(boss_id) if x not in own]
+
+    def add_formation(self, boss_id: str, formation: list[int]) -> None:
+        """Learn one more line-up for a fight with several fights (kept if already known)."""
+        if list(formation) in self.formations(boss_id):
+            return
+        f, key, n = self.data["formations"], boss_id, 2
+        while f.get(key):
+            key, n = f"{boss_id}#{n}", n + 1
+        self.set_formation(key, formation)
+
+    def set_formation(self, boss_id: str, formation: list[int]) -> None:
         self._put("formations", boss_id, list(formation))
-        if random_here is not None:
-            self._put("random_here", boss_id, bool(random_here))
         self.save()
 
-    def random_here(self, boss_id: str) -> bool | None:
-        """Whether random battles could happen where this fight was learned (None: not known)."""
-        return self.data.get("random_here", {}).get(boss_id)
+    def battle_screens(self, boss_id: str) -> list[int]:
+        """Where a fight starts from: learned on your runs, then the fight list's own."""
+        own = self._own_screens(boss_id)
+        return own + [f for f in known_screens(boss_id) if f not in own]
 
-    def battle_id(self, boss_id: str) -> int | None:
-        return self.data.setdefault("battle_ids", {}).get(boss_id)
+    def _own_screens(self, boss_id: str) -> list[int]:
+        return list(self.data.get("battle_screens", {}).get(boss_id) or [])
 
-    def set_battle_id(self, boss_id: str, value: int | None) -> None:
-        self._put("battle_ids", boss_id, None if value is None else int(value))
+    def add_battle_screen(self, boss_id: str, field_id: int) -> bool:
+        """Remember a screen this fight started from (its last few). True if it was new."""
+        if field_id in self.battle_screens(boss_id):
+            return False
+        have = self._own_screens(boss_id)
+        self._put("battle_screens", boss_id, (have + [int(field_id)])[-BATTLE_SCREENS_KEPT:])
         self.save()
-
-    def fingerprint(self, boss_id: str) -> dict | None:
-        return self.data.setdefault("fingerprints", {}).get(boss_id)
-
-    def set_fingerprint(self, boss_id: str, fp: dict | None) -> None:
-        self._put("fingerprints", boss_id, fp)
-        self.save()
+        return True
 
     def field(self, key: str, route: str = "") -> int | None:
         """The screen a step starts on. Learned per route; older learning (shared by all
@@ -162,9 +190,4 @@ class Learned:
 
     def set_field(self, key: str, field_id: int, route: str = "") -> None:
         self._put("fields", f"{route}|{key}" if route else key, field_id)
-        self.save()
-
-    def forget_field(self, key: str, route: str = "") -> None:
-        for k in ([f"{route}|{key}"] if route else []) + [key]:
-            self._put("fields", k, None)
         self.save()

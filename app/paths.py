@@ -10,7 +10,6 @@ CONFIG = ROOT / "config.json"            # settings and the game's memory addres
 LEARNED = ROOT / "learned.json"          # what the coach has learned (screens, fights)
 ROUTES = ROOT / "routes"                 # one file per route
 PROGRESS = ROOT / "progress"             # where each route was left (only if resume_progress is on)
-BACKUPS = ROOT / "backups"               # older copies of routes, kept by the editor
 FIGHTS_CUSTOM = ROOT / "fights_custom.json"   # fights you saved to the editor's fight list
 STOP_FILE = ROOT / "stop_coach"           # made by the launcher's Stop coach button
 LOGS = ROOT / "logs"                     # what the coach saw, for checking a run afterwards

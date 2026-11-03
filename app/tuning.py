@@ -8,7 +8,6 @@ from __future__ import annotations
 
 QUIET_SECONDS_TO_END = 6.0     # fallback end-of-battle when the code check isn't available
 LOOKAHEAD_STEPS = 8            # how far ahead a recognised boss may jump the route
-SCRIPTED_LOOKAHEAD = 3         # how far ahead a fight on a no-encounter screen may jump
 FIELD_LOOKAHEAD = 3            # how far ahead a learned screen may jump
 PICKUP_LOOKAHEAD = 2           # how many walk steps ahead a named pickup may jump
 FIELD_SETTLE = 0.5             # seconds a screen must hold before it counts
@@ -18,11 +17,9 @@ MAX_SCREEN = 9000               # from here up: the world map (many steps cross 
                                # place) and numbers read before the game is loaded
 STEP_SETTLE = 3.0              # seconds a step must be up before its screen is learned
 LOAD_SETTLE = 5.0              # no screens learned this soon after a save was loaded
-FP_CONFIRM = 1.0               # seconds of steady battle bytes before trusting them
 FP_MISMATCH_LIMIT = 4.0        # obvious battle but bytes don't match for this long = unreliable
 FP_STUCK_LIMIT = 60.0          # "in battle" with frozen bars this long = bytes match outside battle
 RESUME_WINDOW = 30.0
-MIN_BOSS_SECONDS = 12.0        # an unrecognised fight shorter than this was a random one (fled)
 UNDO_WINDOW = 30.0
 IGT_TRUST = 180                # in-game timer frames seen counting up before resets are trusted
 IGT_NEW_GAME = 300             # timer back under 5 s (from well above) = reset / new game
@@ -37,15 +34,16 @@ MAX_ATB_STEP = 1500            # biggest plausible ATB rise between two reads
 CLEARED_SECONDS = 1.0          # every enemy down this long = boss beaten
 GIL_PICKUP_MAX = 100000        # a bigger jump than this is a load, not a pickup
 BAG_AFTER_FIGHT = 8.0          # seconds after a fight when new items are spoils, not pickups
-FP_MATCH = 0.9                 # how alike two fights' enemy records must be to be the same fight
 CAPPED_HP = 65535              # a boss whose HP doesn't fit the counter starts on this (Gizamaluke)
+BATTLE_SCREENS_KEPT = 12
+ANY_FIGHTS = 99                # a fight step set to "any" number of fights: never done by count         # screens remembered per fight (the ones it last started from)
 CAPPED_SETTLE = 3.0            # seconds into a fight a capped boss's HP may still be loading
 PHASE_GAP = 1000               # early on, nothing hits for this much: a bigger drop is a new phase
+LOADING_HP = 60000             # a fight's first HP this high that then drops was still loading
 SCRIPT_HP = 10000              # FF9 adds this to bosses whose fight ends on a script
 
 
 EMPTY_SLOT = 255          # item number of an empty equipment slot
-GUEST_NAMES = ("blank", "marcus", "beatrix", "cinna")
 
 
 # Guests live in the records of characters who haven't joined yet (seen in a live game:

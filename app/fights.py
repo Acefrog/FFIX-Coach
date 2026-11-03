@@ -4,10 +4,10 @@ bosses, and moving the route on when a fight is won."""
 
 from __future__ import annotations
 
+from field_names import field_name
 from memory import GameState
-from tuning import (CAPPED_HP, FP_MATCH, FP_MISMATCH_LIMIT, FP_STUCK_LIMIT, LOOKAHEAD_STEPS, MAX_ATB_STEP,
-                    MIN_BOSS_SECONDS, PHASE_GAP, QUIET_SECONDS_TO_END, RESUME_WINDOW, SCRIPTED_LOOKAHEAD,
-                    SCRIPT_HP)
+from tuning import (ANY_FIGHTS, CAPPED_HP, FP_MISMATCH_LIMIT, FP_STUCK_LIMIT, LOOKAHEAD_STEPS, MAX_ATB_STEP, PHASE_GAP,
+                    QUIET_SECONDS_TO_END, RESUME_WINDOW, SCRIPT_HP)
 from steps import formation_of, hp_candidates
 
 
@@ -17,20 +17,37 @@ class FightsMixin:
 
     # -- steps with several fights (Fights: 3) -----------------------------
     def _fights(self, i: int) -> int:
-        # How many fights fight step i has (1 unless the route says more).
+        # How many fights fight step i has (1 unless the route says more; "any": no end by count).
+        card = self.bosses.get(self.steps[i].get("boss"), {})
+        if card.get("any_count"):
+            return ANY_FIGHTS
         try:
-            return max(1, int(self.bosses.get(self.steps[i].get("boss"), {}).get("fights") or 1))
+            return max(1, int(card.get("fights") or 1))
         except (TypeError, ValueError):
             return 1
 
+    def _any_count(self, i: int) -> bool:
+        return bool(self.bosses.get(self.steps[i].get("boss"), {}).get("any_count"))
+
+    def _group_count(self, i: int, k: int) -> int:
+        """How many of kind k step i has (no end with "any")."""
+        if self._any_count(i):
+            return ANY_FIGHTS
+        return max(1, int(self._groups(i)[k].get("count") or 1))
+
+    def _part_way(self, i: int) -> bool:
+        """Some of step i's fights are won (and it's the step you're on)."""
+        return i == self.step and (self.sub > 0 or bool(self.groups_done))
+
     def _keys(self, i: int) -> list:
-        # What each of step i's fights is learned under: its id, then id#2, id#3... With
-        # kinds of fight (soldiers, mages): one key per kind, id@0, id@1.
-        b = self.steps[i]["boss"]
+        # What step i's fights are learned under (routes.learn_as): one for all of them, so
+        # a route with more or fewer of them shares it. With kinds of fight (soldiers,
+        # mages): one key per kind, @0, @1.
+        b = self.bosses.get(self.steps[i]["boss"], {}).get("learn_as") or self.steps[i]["boss"]
         groups = self._groups(i)
         if groups:
             return [f"{b}@{k}" for k in range(len(groups))]
-        return [b] + [f"{b}#{n}" for n in range(2, self._fights(i) + 1)]
+        return [b]
 
     def _lkey(self) -> str:
         # What the fight being fought on the current step is learned under.
@@ -40,7 +57,7 @@ class FightsMixin:
             if g is None and self.in_battle:
                 g = self._group_of(self.step, self._formation())
             return keys[g if g is not None else self._next_group(self.step)]
-        return keys[min(self.sub, len(keys) - 1)]
+        return keys[0]
 
     # -- kinds of fight on one step (Cleyra: soldiers and mages) -------------
     def _groups(self, i: int) -> list[dict]:
@@ -61,7 +78,7 @@ class FightsMixin:
         """The first kind of fight on step i still to do."""
         groups = self._groups(i)
         for k, g in enumerate(groups):
-            if self.groups_done.get(k, 0) < max(1, int(g.get("count") or 1)):
+            if self.groups_done.get(k, 0) < self._group_count(i, k):
                 return k
         return max(0, len(groups) - 1)
 
@@ -73,7 +90,7 @@ class FightsMixin:
         if not groups or not live:
             return None
         def todo(k):
-            return self.groups_done.get(k, 0) < max(1, int(groups[k].get("count") or 1))
+            return self.groups_done.get(k, 0) < self._group_count(i, k)
         order = sorted(range(len(groups)), key=lambda k: not todo(k))
         for need_all in (True, False):
             for k in order:
@@ -84,7 +101,7 @@ class FightsMixin:
         return None
 
     def _learned_form(self, i: int) -> bool:
-        return any(self.learned.formation(k) for k in self._keys(i))
+        return any(self.learned.formations(k) for k in self._keys(i))
 
     def _hp_fits(self, i: int, form: list[int]) -> bool | None:
         """Whether these enemy HPs fit the HP typed for fight step i (None: can't tell -
@@ -108,69 +125,69 @@ class FightsMixin:
                 break
             i = j
 
-    def _known_id(self, i: int) -> int | None:
-        """The battle number fight step i is known by (typed in the route, or learned)."""
-        b = self.steps[i]["boss"]
-        typed = self.bosses.get(b, {}).get("battle_id")
-        return int(typed) if typed is not None else self.learned.battle_id(b)
+    # -- which fight it is: its HP and the screen it started from --------------
+    # A fight is known by its HP (typed, or learned) and the screen it started from (where
+    # you were when it began: picked in the editor, or learned each time it's won). That's
+    # the only way: a fight without both is a random battle until Learn during it teaches it.
+    def _fight_screens(self, i: int) -> set[int]:
+        out = {int(self.steps[i]["screen"])} if self.steps[i].get("screen") is not None else set()
+        for k in self._keys(i):
+            out.update(self.learned.battle_screens(k))
+        return out
 
-    def _match_battle_id(self, bid: int | None) -> int | None:
-        """The fight step (this one or a few ahead) whose battle this is, by FF9's own number."""
-        if not bid:
+    def _screen_says(self, i: int) -> bool | None:
+        """Whether this fight started where fight step i does (None: not known yet)."""
+        known = self._fight_screens(i)
+        if not known or self.battle_field is None:
             return None
+        return self.battle_field in known
+
+    def _hp_all_typed(self, i: int, form: list[int]) -> bool:
+        """Every one of these enemies has its HP typed for fight step i."""
+        typed = set(self.bosses.get(self.steps[i]["boss"], {}).get("hp") or [])
+        return bool(typed) and all(hp_candidates(h) & typed for h in form)
+
+    def _hp_known(self, i: int, form: list[int]) -> bool:
+        """These enemies have HP typed for fight step i, or this is the HP learned for it."""
+        typed = set(self.bosses.get(self.steps[i]["boss"], {}).get("hp") or [])
+        # Typed HP: any enemy loaded into this fight, not only those that have acted yet
+        # (Steiner can sit still behind his helpers). Leftovers were already set aside.
+        loaded = [h for h in self.battle_start_hp if h > 0]
+        if any(hp_candidates(h) & typed for h in set(form) | set(loaded)):
+            return True
+        if typed and CAPPED_HP in form:
+            return True                                # too big for the counter (Gizamaluke)
+        return bool(form) and any(form in self.learned.formations(k) for k in self._keys(i))
+
+    def _match_hp_screen(self, form: list[int]) -> int | None:
+        """The fight step ahead with these enemies' HP that starts from this screen. On a step
+        with several fights you're already part-way through, its next ones go by HP alone:
+        they can start on other screens (each one's is learned as it's won)."""
         for i in self._boss_steps_ahead(self.step, LOOKAHEAD_STEPS):
-            if self._known_id(i) == bid:
-                return i
-        return None
-
-    def _match_formation(self, form: list[int]) -> int | None:
-        if not form:
-            return None
-        # Fights whose battle number is known were checked by number already: not by HP.
-        # Fights known by battle number or by their enemies' records were checked that
-        # way already: not by HP.
-        # A fight with learned enemy records is left out only when those records clearly
-        # belong to other enemies. If one of the learned enemies isn't here at all, the
-        # records may have been learned off a leftover slot (Beatrix II scored 0 against
-        # hers but had her exact HP): HP still decides. So does HP typed for a step with
-        # several fights that every enemy here has, where random battles can't happen: fights
-        # of one kind can differ in their records (Bandersnatches scored 0 against the first).
-        ahead = [i for i in self._boss_steps_ahead(self.step, LOOKAHEAD_STEPS)
-                 if not (self.battle_id_now and self._known_id(i) is not None)
-                 and (not self._fp_rules_out(i) or self._all_typed_hp(i, form))]
-        for i in ahead:  # exact learned formation (unless it goes against typed HP)
-            if self._hp_fits(i, form) is not False and \
-                    any(self.learned.formation(k) == form and self._learned_ok_here(k, self.learned.fingerprint(k), form)
-                        for k in self._keys(i)):
-                return i
-        if CAPPED_HP in form and not self.battle_random_possible:
-            # A boss whose HP doesn't fit the counter: the next boss with HP on its card. Not
-            # where random battles happen: a leftover 65535 in a random isn't a boss.
-            nxt = next((i for i in ahead if self.bosses.get(self.steps[i]["boss"], {}).get("hp")), None)
-            if nxt is not None:
-                return nxt
-        live = set().union(*(hp_candidates(h) for h in form))
-        n = 0                          # recognisable fights passed so far
-        for i in ahead:  # then a known boss HP value (raw, or with the scripted 10,000 added)
-            sig = set(self.bosses.get(self.steps[i]["boss"], {}).get("hp", []))
-            if not live & sig:
-                n += self._fight_known(i)
+            if not self._hp_known(i, form):
+                if self._screen_says(i) and self._hit_before_read(i):
+                    return i
                 continue
-            if n == 0:
-                return i                               # the next fight: one enemy's HP is enough
-            # Further on, skipping a fight: only if every enemy here is that fight's, and not
-            # where random battles happen (a 33 HP random isn't Plant Spiders three fights on).
-            if n <= 1 and all(hp_candidates(h) & sig for h in form) and not self.battle_random_possible:
-                return i                               # (and at most one fight skipped)
-            n += self._fight_known(i)
+            if self._screen_says(i):
+                return i
+            if self._fights(i) > 1 and self._part_way(i):
+                return i
         return None
 
-    def _next_boss_unknown(self) -> int | None:
-        for i in self._boss_steps_ahead(self.step, SCRIPTED_LOOKAHEAD):
-            b = self.steps[i]["boss"]
-            known = self._learned_form(i) or self.bosses.get(b, {}).get("hp")
-            return None if known else i
-        return None
+    def _hit_before_read(self, i: int) -> bool:
+        """An enemy already below fight step i's typed HP when it was first read: hit before
+        the coach saw it (Bandersnatch at 539 of 899, Prison Cage at 455 of 533). Only taken
+        where random battles can't happen, so a random enemy with little HP isn't the boss."""
+        if self.battle_random_possible:
+            return False
+        typed = self.bosses.get(self.steps[i]["boss"], {}).get("hp") or []
+        loaded = [h for h in self.battle_start_hp if h > 0]
+        return any(0 < c < t for h in loaded for c in hp_candidates(h) for t in typed)
+
+    def _learn_battle_screen(self, key: str) -> None:
+        f = self.battle_field
+        if f is not None and self.learned.add_battle_screen(key, f):
+            self._event(f"learned: {self._label(self.step)} starts from {field_name(f)}")
 
     # -- battle in/out -----------------------------------------------------
     def _calibrate_fp(self, state: GameState, moving: bool, hp_changed: bool, now: float) -> None:
@@ -261,6 +278,11 @@ class FightsMixin:
         self.identified = False
         self.battle_cleared = False
         self.battle_start_time = now
+        # The last screen you were on. Not one read before a save was loaded or the game
+        # reset (Masked Man "from" Hill of Despair): then it isn't known.
+        self.battle_field = self.field_cur if self.field_read_at >= self.loaded_at else None
+        self.battle_by_hand = False                     # put on its step with F8/F7
+        self._extra_return = None
         # Enemy memory can still hold the last fight's numbers for a moment after a new
         # fight starts (Plant Brain's 10,916 showed up as Plant Spiders and Black Waltz 1).
         # A slot still holding exactly what it held on the field isn't this fight's yet:
@@ -279,10 +301,6 @@ class FightsMixin:
         self.script_slots = set()
         self.hold_route = False
         self.battle_counted = False
-        self.battle_id_now = None
-        self._blk_start = list(state.enemy_blocks)
-        self._blk_now = list(state.enemy_blocks)
-        self._blk_dyn = [set() for _ in state.enemy_blocks]
         self.battle_first_hp = self.battle_start_hp      # the same list: filled in as slots load
         self._script_cache = {}
         self.cleared_since = None
@@ -290,11 +308,9 @@ class FightsMixin:
         self.battle_last_party = list(state.party_hp_slots)
         self.battle_start_party = list(state.party_hp_slots)
         self._fight_sig, self._fight_sig_stable = state.battle_sig, bool(state.battle_sig)
-        self.turn = 0
         self.message = ""
         self.steal_note = None
         self.pre_battle_step = self.step
-        self.battle_tentative = False
         self.battle_is_boss = False
 
     def _identify(self, state: GameState, now: float) -> None:
@@ -318,176 +334,36 @@ class FightsMixin:
                 self._save_progress()
                 return
 
-        self.battle_id_now = state.battle_id
-        how = "battle number"
-        jump = self._match_battle_id(self.battle_id_now)
-        if jump is None:
-            how = "enemy records"
-            jump = self._match_fingerprint()
-        if jump is None:
-            how = "enemy HP"
-            jump = self._match_formation(form)
+        jump = self._match_hp_screen(form)
         was = self.step
+        extra = self._left_multi
         if jump is not None:
             if jump != self.step:
                 self.message = f"Recognised: {self.bosses[self.steps[jump]['boss']]['name']}"
             self.step = jump
             self.battle_is_boss = True
-            what = f"recognised as {self._label(jump)} (by {how})"
-        elif self._probably_this_boss(form):
+            what = f"recognised as {self._label(jump)} (by HP and screen)"
+        elif (extra is not None and extra != self.step and self._hp_known(extra, form)
+              and (self._screen_says(extra) or not self.battle_random_possible)):
+            # One more of the several fights just done (this route has more of them than
+            # the step says): it's that fight, and the route carries on from here after.
+            self._extra_return = self.step
+            self.step = extra
             self.battle_is_boss = True
-            self.battle_tentative = True
-            what = f"taken as {self._label(self.step)} (a guess: no random battles here or hidden HP)"
-        elif self.current()["type"] != "boss" and not state.encounters_possible:
-            what = "not recognised"
-            nb = self._next_boss_unknown()
-            if nb is not None:
-                self.step = nb
-                self.battle_is_boss = True
-                self.battle_tentative = True
-                self.message = "Scripted fight: assuming next boss"
-                what = f"taken as {self._label(nb)} (scripted fight, next unknown fight step)"
+            self.message = f"One more {self.bosses[self.steps[extra]['boss']]['name']} fight"
+            what = f"one more fight of {self._label(extra)}"
         else:
             what = "random battle" if self.battle_random_possible else "not recognised"
         if self.step != was:
             self.step_since = self._now
-        self._event(f"fight started, HP {form}: {what}")
+        room = field_name(self.battle_field) if self.battle_field is not None else "a room not seen since the load"
+        self._event(f"fight started from {room}, HP {form}: {what}")
         self.script_slots = self._find_script_slots()
         if not self.battle_is_boss and self.battle_random_possible and not self.battle_counted:
             # A random battle: it counts as soon as it's recognised, not when it ends.
             self.battle_counted = True
             self._count_encounter(self._igt_last or 0)
         self._save_progress()
-
-    # -- fight fingerprints: the enemies' own records, compared byte by byte ----
-    def _track_blocks(self, state: GameState) -> None:
-        if len(self._blk_start) != len(state.enemy_blocks):
-            self._blk_start = list(state.enemy_blocks)
-            self._blk_dyn = [set() for _ in state.enemy_blocks]
-        for k, (a, b) in enumerate(zip(self._blk_start, state.enemy_blocks)):
-            if a != b:
-                self._blk_dyn[k].update(i for i, (x, y) in enumerate(zip(a, b)) if x != y)
-        self._blk_now = list(state.enemy_blocks)
-
-    def _fingerprint(self) -> dict | None:
-        """This fight's enemies as they're kept in memory (stats, not HP or timers)."""
-        slots = self._fight_enemies()                  # not leftovers in empty slots
-        if not slots or not self._blk_now:
-            return None
-        fp = {"slots": {str(k): {"b": self._blk_now[k].hex(), "dyn": sorted(self._blk_dyn[k])}
-                        for k in slots if k < len(self._blk_now)},
-              "form": self._formation(),               # its HP then (bad teaching shows up against typed HP)
-              "random": self.battle_random_possible}   # random battles possible where it was fought
-        solid = sum(1 for k in slots if k < len(self._blk_now)
-                    for i, x in enumerate(self._blk_now[k]) if x and i not in self._blk_dyn[k])
-        return fp if solid >= 16 else None             # too little to tell fights apart by
-
-    def _fp_score(self, fp: dict | None) -> float:
-        """0..1: how much this fight's enemy records match a learned fight's."""
-        if not fp or not self._blk_now:
-            return 0.0
-        same = total = 0
-        for ks, rec in fp.get("slots", {}).items():
-            k = int(ks)
-            if k >= len(self._blk_now):
-                return 0.0
-            old, cur = bytes.fromhex(rec["b"]), self._blk_now[k]
-            if not any(cur):
-                return 0.0                             # that enemy isn't in this fight
-            skip = set(rec.get("dyn", [])) | (self._blk_dyn[k] if k < len(self._blk_dyn) else set())
-            s = t = 0
-            for i, (x, y) in enumerate(zip(old, cur)):
-                if i in skip or (x == 0 and y == 0):
-                    continue
-                t += 1
-                s += x == y
-            if t and s / t < FP_MATCH - 0.1:
-                return 0.0                             # one enemy clearly different
-            same, total = same + s, total + t
-        return same / total if total else 0.0
-
-    def _match_fingerprint(self) -> int | None:
-        best, best_i = 0.0, None
-        form = self._formation()
-        for i in self._boss_steps_ahead(self.step, LOOKAHEAD_STEPS):
-            sc = max((self._fp_score(self._fp(i, k)) for k in self._keys(i)
-                      if self._learned_ok_here(k, self._fp(i, k), form)), default=0.0)
-            if sc > best:
-                best, best_i = sc, i
-        return best_i if best >= FP_MATCH else None
-
-    def _learned_ok_here(self, k: str, fp: dict | None, form: list[int]) -> bool:
-        """A fight learned where random battles can't happen (the Iifa elevator) isn't
-        recognised by what it learned on a screen where they can: random battles there can
-        have the very same enemies. Older learning, without that noted: only by the exact
-        HP it learned."""
-        if not self.battle_random_possible:
-            return True
-        flag = (fp or {}).get("random")
-        if flag is None:
-            flag = self.learned.random_here(k)
-        if flag is not None:
-            return flag
-        learned_form = self.learned.formation(k) or (fp or {}).get("form")
-        return not learned_form or learned_form == form
-
-    def _fp(self, i: int, k: str) -> dict | None:
-        """Fight k's learned enemy records, unless they were learned off a fight whose HP
-        doesn't fit the HP typed for step i (a stray F8): those are ignored."""
-        fp = self.learned.fingerprint(k)
-        form = (fp or {}).get("form") or self.learned.formation(k)    # older records: the HP learned with them
-        if fp and form and self._hp_fits(i, form) is False:
-            return None
-        return fp
-
-    def _all_typed_hp(self, i: int, form: list[int]) -> bool:
-        """On a step with several fights, every enemy here has HP typed for it and random
-        battles can't happen here: that's one of its fights, whatever was learned about the
-        enemies' records (they differ between fights of one kind). A single fight keeps to
-        its records: the same HP with other enemies isn't it."""
-        typed = set(self.bosses.get(self.steps[i]["boss"], {}).get("hp") or [])
-        return (self._fights(i) > 1 and bool(typed and form) and not self.battle_random_possible
-                and all(hp_candidates(h) & typed for h in form))
-
-    def _fp_rules_out(self, i: int) -> bool:
-        # Step i's learned enemies are clearly not these (for every one of its fights).
-        return all(self._fp_rules_out_one(self._fp(i, k)) for k in self._keys(i))
-
-    def _fp_rules_out_one(self, fp) -> bool:
-        if not fp or not self._blk_now:
-            return False
-        for ks in fp.get("slots", {}):
-            k = int(ks)
-            if k >= len(self._blk_now) or not any(self._blk_now[k]):
-                return False                           # a learned enemy that isn't here: suspect
-        return self._fp_score(fp) < FP_MATCH
-
-    def _known_fp(self, i: int) -> bool:
-        return all(self._fp(i, k) is not None for k in self._keys(i))
-
-    def _probably_this_boss(self, form: list[int]) -> bool:
-        """A fight on a fight step that matches nothing the coach knows. It's taken as
-        the boss when it can't be a random battle: no random battles on this screen, or
-        (Discs 1-2) an enemy carries the hidden 10,000 only scripted fights have, even if
-        the HP typed for the fight is off. On a screen with random battles and no such
-        enemy it's a random battle, unless the fight has no HP to go on yet and lasts."""
-        cur = self.current()
-        if cur["type"] != "boss":
-            return False
-        if self.battle_id_now and self._known_id(self.step) is not None:
-            return False                               # its battle number is known, and this isn't it
-        if self._known_fp(self.step):
-            return False                               # its enemies are known, and these aren't them
-        # The hidden 10,000 only counts on an enemy that's really moving: an empty slot
-        # can hold a leftover big number (64,338 / 37,660 next to Lifa Tree randoms).
-        moving = [self.battle_start_hp[k] for k in self.active_enemy if k < len(self.battle_start_hp)]
-        scripted = int(cur.get("disc", 1)) <= 2 and any(SCRIPT_HP <= h < CAPPED_HP for h in moving)
-        if scripted:
-            return True
-        known = self._learned_form(self.step) or self.bosses.get(cur["boss"], {}).get("hp")
-        if known:
-            return False
-        return not self.battle_random_possible
 
     def _reidentify(self) -> None:
         """An enemy that only starts moving after the fight was judged (Masked Man's own
@@ -496,37 +372,12 @@ class FightsMixin:
         if form == self._ident_form:
             return
         self._ident_form = form
-        if self.battle_id_now and self._known_id(self.step) is not None:
-            return                                     # decided by battle number already
-        jump = self._match_fingerprint()
-        if jump is None:
-            jump = self._match_formation(form)
-        tentative = False
-        if jump is None:
-            if not self._probably_this_boss(form):
-                if self.battle_is_boss and self.battle_tentative:
-                    # Only a guess, and what the fight turned out to be doesn't back it up
-                    # (a leftover big number in an empty slot looked like hidden HP): a
-                    # random battle after all.
-                    self.battle_is_boss = self.battle_tentative = False
-                    self._event(f"fight now HP {form}: a random battle after all")
-                    self.step = self.pre_battle_step
-                    self.turn = 0
-                    self.message = ""
-                    if self.battle_random_possible and not self.battle_counted:
-                        self.battle_counted = True
-                        self._count_encounter(self._igt_last or 0)
-                    self._save_progress()
-                return
-            jump, tentative = self.step, True
-        elif self.battle_is_boss and self.battle_tentative and jump == self.step:
-            self.battle_tentative = False              # the guess is now backed up
+        jump = self._match_hp_screen(form)
+        if jump is None or (jump == self.step and self.battle_is_boss):
             return
-        if jump != self.step or not self.battle_is_boss:
-            self._event(f"fight now HP {form}: {'taken as' if tentative else 'recognised as'} {self._label(jump)}")
+        self._event(f"fight now HP {form}: recognised as {self._label(jump)} (by HP and screen)")
         self.step = jump
         self.battle_is_boss = True
-        self.battle_tentative = tentative
         if self.battle_counted and self.encounters:
             self.encounters.pop()                      # it was counted as a random battle
             self.battle_counted = False
@@ -615,43 +466,23 @@ class FightsMixin:
             first = self.battle_first_hp[k] if k < len(self.battle_first_hp) else 0
             flags = ("A" if k in self.active_enemy else "-") + ("S" if self._is_script(k) else "-")
             parts.append(f"{k}:{first}>{h}={self._shown_hp(k, h)}[{flags}]")
-        if self.in_battle and self.current()["type"] == "boss" and self._known_fp(self.step):
-            parts.append(f"fp={max(self._fp_score(self.learned.fingerprint(k)) for k in self._keys(self.step)):.2f}")
+        if self.in_battle:
+            parts.append(f"from {field_name(self.battle_field)}")
         return " ".join(parts)
 
-    def _too_short_for_boss(self, now: float) -> bool:
-        """An unrecognised fight over this quickly, where random battles happen, was a random one."""
-        return (self.battle_tentative and self.battle_random_possible
-                and now - self.battle_start_time < MIN_BOSS_SECONDS)
-
-    def _learn_battle_id(self) -> None:
-        """Remember this fight step's battle number and enemies (the first time it's
-        beaten, or on F8)."""
-        b = self._lkey()
-        self._last_learned = b
-        if self._hp_fits(self.step, self._formation()) is False:
-            return                                     # not the fight typed for this step: learn nothing
-        old = self.learned.fingerprint(b)
-        if old is None or (not self.battle_tentative and self._fp_score(old) < FP_MATCH):
-            # First win, or the records learned before don't fit the fight that was
-            # recognised by its HP: learn them again from this one.
-            fp = self._fingerprint()
-            if fp:
-                self.learned.set_fingerprint(b, fp)
-                self.learned_this_session.add(b)
-        if self.battle_id_now and self._fights(self.step) == 1 and self.learned.battle_id(b) is None \
-                and self.bosses.get(b, {}).get("battle_id") is None:
-            self.learned.set_battle_id(b, self.battle_id_now)
-            self.learned_this_session.add(b)
-
     def _finish_boss(self, now: float) -> None:
-        self._learn_battle_id()
         b = self._lkey()
+        if not self.battle_by_hand:                    # (a fight put on its step with F8/F7 teaches nothing)
+            self._learn_battle_screen(b)
+        if self._extra_return is not None:
+            # One more of a step's fights after it was done: back to where the route was.
+            back, self._extra_return = self._extra_return, None
+            self._event(f"fight won: {self._label(self.step)} (one more than it says)")
+            self.step, self.step_since = back, now
+            self._save_progress()
+            self.message = "Fight done: back to this step"
+            return
         form = self._formation()
-        if self.battle_tentative and form and self.learned.formation(b) is None \
-                and self._hp_fits(self.step, form) is not False:
-            self.learned.set_formation(b, form, self.battle_random_possible)
-            self.learned_this_session.add(b)
         # Remember the HP it stopped at, so the same fight picking up again is recognised.
         real = self._real_enemies()
         self.last_end = (formation_of([self.battle_last_hp[k] for k in real
@@ -660,29 +491,31 @@ class FightsMixin:
         groups = self._groups(self.step)
         if groups:
             g = self.cur_group if self.cur_group is not None else self._group_of(self.step, form)
-            if g is None or self.groups_done.get(g, 0) >= max(1, int(groups[g].get("count") or 1)):
+            if g is None or (self.groups_done.get(g, 0) >= self._group_count(self.step, g)
+                             and sum(self.groups_done.values()) < n):
                 g = self._next_group(self.step)        # can't tell which: the next one still to do
             self.groups_done[g] = self.groups_done.get(g, 0) + 1
             self._last_group = g
             self.cur_group = None
-            left = sum(max(0, max(1, int(gr.get("count") or 1)) - self.groups_done.get(k, 0))
-                       for k, gr in enumerate(groups))
+            left = sum(max(0, self._group_count(self.step, k) - self.groups_done.get(k, 0))
+                       for k in range(len(groups)))
+            of = "" if self._any_count(self.step) else f"/{self._group_count(self.step, g)}"
             self._event(f"{groups[g].get('name') or 'fight'} done "
-                        f"({self.groups_done[g]}/{max(1, int(groups[g].get('count') or 1))}) on {self._label(self.step)}")
+                        f"({self.groups_done[g]}{of}) on {self._label(self.step)}")
             self.sub = min(n - 1, sum(self.groups_done.values()))
             self._last_end_sub = left > 0
             if left:
-                self.turn = 0
                 self._save_progress()
-                self.message = f"Fight done: {left} more on this step"
+                self.message = ("Fight done: on to the next step's room when they're over"
+                                if self._any_count(self.step) else f"Fight done: {left} more on this step")
                 return
         else:
             self._last_end_sub = self.sub + 1 < n
         if self._last_end_sub:
             self.sub += 1                              # the step's next fight
-            self.turn = 0
             self._save_progress()
-            self.message = f"Fight done: {n - self.sub} more on this step"
+            self.message = ("Fight done: on to the next step's room when they're over"
+                            if self._any_count(self.step) else f"Fight done: {n - self.sub} more on this step")
             return
         if self.is_inside(self.step) and self.parent_of(self.step) is not None:
             # A fight in the middle of a step: back to that step to carry on with it.
@@ -691,7 +524,7 @@ class FightsMixin:
             self._goto(parent, manual=False, why="fight won, back to its step")
             self._end_dest = parent
             self._back_to_parent = parent
-            self.message = f"Fight done: back to {self.steps[parent].get('title') or 'the step'}"
+            self.message = ""                          # (the step it's in just carries on)
             return
         self._event(f"fight won: {self._label(self.step)}")
         self._goto(self._next_index(self.step), manual=False, why="fight won")
@@ -720,28 +553,15 @@ class FightsMixin:
                 and self.learned.battle_fp is None and not self.learned.data.get("fp_unusable"):
             # A fight that clearly happened: its battle-code bytes are a safe signal to learn.
             self.learned.set_battle_fp(self._fight_sig)
-        counted = False
         if was_boss:
-            doubtful = self.battle_tentative and (not decisive or self._too_short_for_boss(now))
-            if doubtful and self.battle_random_possible and not self.battle_counted:
-                self._count_encounter(self._igt_last or 0)    # it was a random battle after all
-                counted = True
-            if doubtful:
-                # Not clearly the boss: stay on this step. F8 confirms it if it was.
-                self._event("fight ended, but not clearly that fight (no clear win, or too short): staying")
-                self.step = self.pre_battle_step
-                self.turn = 0
-                self._save_progress()
-                self.message = ""
-            else:
-                self._finish_boss(now)
+            self._finish_boss(now)
+        if self._extra_return is not None:             # (it ended without a win)
+            self.step, self._extra_return = self._extra_return, None
         self.battle_start_hp = []
         self.battle_cleared = False
-        self.battle_tentative = False
 
     def _fight_known(self, i: int) -> bool:
-        """Whether fight step i can be recognised: typed HP or battle number, or learned."""
+        """Whether fight step i can be recognised: its HP (typed or learned) and its screen
+        (picked in the editor, or learned) are both known."""
         b = self.bosses.get(self.steps[i]["boss"], {})
-        return bool(b.get("hp") or b.get("battle_id") is not None or self._learned_form(i)
-                    or any(self.learned.fingerprint(k) or self.learned.battle_id(k) is not None
-                           for k in self._keys(i)))
+        return bool((b.get("hp") or self._learned_form(i)) and self._fight_screens(i))

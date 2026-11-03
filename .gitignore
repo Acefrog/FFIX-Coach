@@ -1,10 +1,12 @@
 # Written by the coach and editor while you play: changes every run
 logs/
 progress/
-backups/
 learned.json
 stop_coach
 *.tmp
 
 # Python's compiled files
 __pycache__/
+
+# A fresh install built for sharing
+dist/

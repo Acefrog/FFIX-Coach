@@ -23,10 +23,8 @@ from __future__ import annotations
 
 import functools
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-PLAYABLE = ("zidane", "vivi", "garnet", "steiner", "freya", "quina", "eiko", "amarant")
-GUESTS = ("blank", "marcus", "beatrix", "cinna")   # share one record in the game: whoever is with you
 # "-Head" etc. take off whatever is in that slot (Weapon can't be emptied)
 SLOTS = {"head": [1], "helm": [1], "hat": [1], "arm": [2], "arms": [2], "wrist": [2], "armlet": [2],
          "armor": [3], "armour": [3], "body": [3], "acc": [4], "accessory": [4], "all": [1, 2, 3, 4]}
@@ -73,10 +71,6 @@ def is_comment(line: str) -> bool:
     """A line starting with # is a small comment under the line above (gear after an
     Optimize, reminders): shown, never checked."""
     return line.strip().startswith("#")
-
-
-def comment_text(line: str) -> str:
-    return line.strip().lstrip("#").strip()
 
 
 def is_ap_line(line: str) -> bool:
@@ -179,22 +173,6 @@ def config_check(line: str) -> tuple[str, str] | None:
     return setting, re.sub(r"\s*\(.*\)$", "", m.group(2)).strip()
 
 
-HELP = [
-    ("1x Tent (where)", "pickup", "an item to pick up; x1 Tent works too"),
-    ("2700x Gil (where)", "pickup", "gil to pick up (?x Gil if unsure)"),
-    ("2x Any item (where)", "pickup", "any items (hidden ones you don't know)"),
-    ("Buy 2 Mage Masher, 1 Glass Armlet", "buy", "the bag gains them"),
-    ("Buy 5 Steepled Hat (4 if you stole one)", "buy", "own that many in total"),
-    ("Sell all Ether, Eye Drops", "sell", "none left; 'extra Wrist' = fewer"),
-    ("Synth 1 Exploda", "synth", "the bag gains it"),
-    ("Zidane: Coral Ring, -Leather Hat", "equip", "on / off (dash = take off, red)"),
-    ("Steiner: Bird Killer, -Man Eater", "equip", "abilities on / off"),
-    ("Freya: Optimize", "equip", "ticks when her gear changes"),
-    ("Freya front row", "row", "also: Steiner and Freya back row"),
-    ("Battle Speed: Fast", "config", "a Config menu setting"),
-    ("Steal Chain Plate (on a fight card)", "steal", "ticks once you have it"),
-    ("anything else", "note", "shown as it is"),
-]
 
 
 _STEAL_LINE = re.compile(r"\bsteal\b\s*(.*)", re.I)

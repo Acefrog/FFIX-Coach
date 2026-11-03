@@ -44,7 +44,7 @@ def ap_subjects() -> list[str]:
 
 def parse_when(v: str) -> tuple[str, str, str, int] | None:
     """A step's "when": ("cmp", item, op, n) for "Broadsword < 2" (op one of OPS), or
-    ("pick", "", "", 0) for one only Shift+F5 chooses. Older "fewer than 2 Broadsword"
+    ("pick", "", "", 0) for one taken only when you reach it. Older "fewer than 2 Broadsword"
     and "at least 2 Broadsword" are read too."""
     v = (v or "").strip()
     if v.lower() == "pick":
@@ -86,7 +86,7 @@ def when_label(v: str) -> str:
     if not w:
         return v
     if w[0] == "pick":
-        return "picked with Shift+F5"
+        return "only when you reach it"
     return " and ".join(when_text(*c) for c in (parse_conds(v) or [w[1:]]))
 
 
@@ -125,7 +125,7 @@ def route_branches(steps: list[dict]):
       characters wear together. Steps anywhere asking the same (or its opposite: < 2 and
       >= 2) share the answer, decided once on reaching the first of them, so a later
       step can say "Broadsword < 2" on its own and is skipped when you have 2.
-    - "pick", or no "when": the step itself, unless you switch with Shift+F5.
+    - "pick", or no "when": the step itself, unless you reach the alternative first.
     Returns (per step (group, option) or None, group -> options, group -> (item, n))."""
     per: list = [None] * len(steps)
     opts: dict[str, list[str]] = {}
@@ -231,7 +231,7 @@ def route_branches(steps: list[dict]):
 
 
 class BranchesMixin:
-    """Which way the run goes: alternative steps (14a), conditions and Shift+F5.
+    """Which way the run goes: alternative steps (14a) and their conditions.
     Mixed into Coach: works on its state."""
 
     # -- alternative steps (14 / 14a) ------------------------------------
@@ -312,7 +312,7 @@ class BranchesMixin:
         return f"got {self._count(item)} this run" + (f" (at {', '.join(where)})" if where else "")
 
     def branch_now(self, group: str) -> str | None:
-        """The way you're going: the one fixed on reaching it (or picked with Shift+F5),
+        """The way you're going: the one fixed on reaching it,
         else what the item count says, else the first."""
         if group in self.branch_choice:
             return self.branch_choice[group]
@@ -358,46 +358,6 @@ class BranchesMixin:
             self._event(f"way: {self._way_name(*b)}" + (f", {chk[0]}: {self._count_text(chk[0])}"
                                                          if chk and chk[0] != "ways" else ""))
             self._save_progress()
-
-    def switch_branch(self) -> None:
-        """Shift+F5: the other branch, for the branch you're on or the next one coming up."""
-        group, start = None, None
-        b = self.branch_of(self.current())
-        if b:
-            group = b[0]
-        else:
-            for j in range(self.step + 1, min(len(self.steps), self.step + 40)):
-                bj = self.branch_of(self.steps[j])
-                if bj:
-                    group = bj[0]
-                    break
-        if group is None:
-            self.message = "No alternative steps coming up"
-            return
-        opts = self.branch_options(group)
-        cur = b[1] if b else self.branch_now(group)        # on a step of a branch: that one
-        new = opts[(opts.index(cur) + 1) % len(opts)] if cur in opts else opts[0]
-        self.branch_choice[group] = new
-        self.branch_at[group] = self._igt_last or 0
-        self._event(f"switched by hand to: {self._way_name(group, new)}")
-        self.message = f"Now: {self._way_name(group, new)}"
-        if b:                                          # on a step of the old branch: to the new one's
-            k = self.step                              # this step and its alternatives
-            while k > 0 and (self.branch_of(self.steps[k - 1]) or ("",))[0] == group:
-                k -= 1
-            start = None
-            for j in range(k, len(self.steps)):
-                bj = self.branch_of(self.steps[j])
-                if not bj or bj[0] != group:
-                    break
-                if bj[1] == new:
-                    start = j
-                    break
-            if start is None:                          # the new way has no steps here: on past them
-                start = self._step_by(self.step, 1)
-            if start is not None:
-                self._goto(start, manual=False, why=f"branch switched to {new}")
-        self._save_progress()
 
     def _way_name(self, group: str, option: str) -> str:
         chk = self._branches()[1].get(group)

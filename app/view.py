@@ -19,11 +19,11 @@ class View:
     header: str
     title: str
     lines: list[str]
+    title_note: str = ""                 # shown small in brackets after the title (a sub-step's main step)
     highlight: int | None = None
     highlight_end: int | None = None   # the highlight covers lines highlight..end-1 (indented lines)
     badges: list[tuple[str, str]] = field(default_factory=list)  # (text, "good"|"warn"|"info")
     footer: str = ""
-    upcoming: list[str] = field(default_factory=list)
     next_title: str = ""                 # the next step, shown underneath (if show_next is on)
     next_kind: str = ""
     next_lines: list[str] = field(default_factory=list)
@@ -120,21 +120,6 @@ class ViewMixin:
         if not (self.battle_is_boss and cur["type"] == "boss"):
             return {}
         return self.bosses.get(cur["boss"], {}).get("hp_names") or {}
-
-    def _upcoming(self, count: int = 1) -> list[str]:
-        out, i = [], self.step
-        for _ in range(count):
-            j = self._step_by(i, 1)
-            if j == i:
-                break
-            out.append(self._step_label(self.steps[j]))
-            i = j
-        return out
-
-    def _step_label(self, s: dict) -> str:
-        if s["type"] == "boss":
-            return self.bosses.get(s["boss"], {}).get("name", s["boss"])
-        return s.get("title") or step_lines(s)[0]
 
     def _status_badges(self, state: GameState) -> list[tuple[str, str]]:
         """Status notes ("Fight done", "Recognised: ...") are kept for --debug only;
@@ -267,18 +252,26 @@ class ViewMixin:
             if fighting:
                 badges += self._fight_readout(state)
             n = self._fights(self.step)
-            title = boss["name"] + (f"  ·  fight {min(self.sub + 1, n)} of {n}" if n > 1 else "")
+            if self._any_count(self.step):
+                title = boss["name"] + f"  ·  fight {self.sub + 1}"
+            else:
+                title = boss["name"] + (f"  ·  fight {min(self.sub + 1, n)} of {n}" if n > 1 else "")
             stats = []
             for k, g in enumerate(self._groups(self.step)):        # soldiers 2/4 · mages 1/2
-                c = max(1, int(g.get("count") or 1))
-                d = min(c, self.groups_done.get(k, 0))
+                d = self.groups_done.get(k, 0)
+                if self._any_count(self.step):
+                    stats.append(f"{g.get('name') or 'Fight'} {d}")
+                    continue
+                c = self._group_count(self.step, k)
+                d = min(c, d)
                 stats.append(("\u2713 " if d >= c else "") + f"{g.get('name') or 'Fight'} {d}/{c}")
             if not self._fight_known(self.step):
-                title = FLAG + title                   # can't recognise this fight yet: F8 during it teaches it
+                title = FLAG + title                   # can't recognise this fight yet: the Learn key during it teaches it
+            note = ""
             if self.is_inside(self.step) and self.parent_of(self.step) is not None:
-                title += f"  ·  in {self.steps[self.parent_of(self.step)].get('title') or 'the step above'}"
+                note = self.steps[self.parent_of(self.step)].get('title') or 'the step above'
             turns, ap_done, where = self._ap_lines(turns, state)
-            return View(header=header, title=title,
+            return View(header=header, title=title, title_note=note,
                         lines=turns, highlight=hl, highlight_end=hl_end, badges=badges,
                         footer=boss.get("if_wrong", "") if boss_fight else "",
                         kind="boss", stats=stats, done=[where[i] for i in self._steals_done()] + ap_done,
@@ -314,16 +307,12 @@ class ViewMixin:
             lines[k] = f"{indent}\u21b3 {self.steps[j].get('title')}"
             if j in self.inside_done and k not in done:
                 done.append(k)
-        for j in self.inside_of(self.step):           # sub-steps it doesn't call: listed at the end
-            if j in called:
-                continue
-            name = self.steps[j].get("title") or "fight"
-            lines.append(f"# \u2713 {name} done" if j in self.inside_done else f"# On the way: {name}")
         title = s.get("title") or ("Menu" if s["type"] == "menu" else "Next")
+        note = ""
         if self.is_inside(self.step) and self.parent_of(self.step) is not None:
-            title += f"  ·  in {self.steps[self.parent_of(self.step)].get('title') or 'the step above'}"
+            note = self.steps[self.parent_of(self.step)].get('title') or 'the step above'
         if self._needs_f8(state):
             title = FLAG + title                       # it can't move on from this step by itself yet
-        return View(header=header, title=title,
+        return View(header=header, title=title, title_note=note,
                     lines=lines, highlight=hl, badges=badges, footer=s.get("backup", ""),
                     kind=s["type"], stats=self._stats(state), done=done, **self._next_preview())

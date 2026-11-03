@@ -9,10 +9,9 @@ from __future__ import annotations
 import json
 import re
 import shutil
-import time
 from pathlib import Path
 
-from paths import BACKUPS, CONFIG, PROGRESS, ROOT, ROUTES, write_atomic
+from paths import CONFIG, PROGRESS, ROOT, ROUTES, write_atomic
 
 
 def _config() -> dict:
@@ -43,8 +42,7 @@ def migrate() -> None:
     if (ROOT / "progress.json").exists():
         shutil.copyfile(ROOT / "progress.json", PROGRESS / f"{name}.json")
     set_active(name)
-    BACKUPS.mkdir(exist_ok=True)
-    old.replace(BACKUPS / "route.json (before routes folder).json")
+    old.unlink()                                       # (it's in the routes folder now)
 
 
 def names() -> list[str]:
@@ -118,13 +116,9 @@ def rename(old: str, new: str) -> str:
 
 
 def delete(name: str) -> None:
-    """Moves the route to backups (nothing is lost for good)."""
-    BACKUPS.mkdir(exist_ok=True)
+    """Deletes the route for good (no copy is kept), and its place in it."""
     if path(name).exists():
-        dest = BACKUPS / f"{name} (deleted).json"
-        if dest.exists():                              # deleted before: keep that one too
-            dest = BACKUPS / f"{name} (deleted {time.strftime('%Y%m%d-%H%M%S')}).json"
-        path(name).replace(dest)
+        path(name).unlink()
     if progress_path(name).exists():
         progress_path(name).unlink()
 
@@ -132,7 +126,7 @@ def delete(name: str) -> None:
 # ----------------------------------------------------------------------
 # Fight steps: written like any other step (title, lines, backup note, plus HP)
 # ----------------------------------------------------------------------
-FIGHT_FIELDS = ("hp", "hp_names", "also_hp", "lv5", "needs", "battle_id", "fights", "groups")
+FIGHT_FIELDS = ("hp", "hp_names", "also_hp", "lv5", "needs", "fights", "groups", "any_count")
 
 
 def step_id(route: dict, title: str, taken: set | None = None) -> str:
@@ -169,6 +163,35 @@ def inline_cards(route: dict) -> dict:
     return route
 
 
+def _same_fight(s: dict, fights: list) -> str | None:
+    # The ready-made fight a step is: the one picked for it, else the only one with exactly
+    # its HP, else the only one whose HP includes all of it (Plant Brain typed as just 916).
+    if s.get("preset"):
+        return s["preset"]
+    hp = {int(h) for h in s.get("hp") or []}
+    if not hp or s.get("groups"):
+        return None
+    for mine in (False, True):                  # ready-made ones first, then yours
+        for fits in (lambda have: have == hp, lambda have: hp <= have):
+            found = [f["name"] for f in fights if bool(f.get("mine")) == mine
+                     and fits({int(h) for h in f.get("hp") or []})]
+            if found:
+                return found[0] if len(found) == 1 else None
+    return None
+
+
+def learn_as(steps: list, s: dict) -> str:
+    """What a fight step's HP and screens are learned under. A ready-made fight (Masked Man,
+    Baku...) is learned once for every route; a fight of the route's own is learned under
+    its id. Two steps of one route that are the same fight each keep their own."""
+    import fights_data
+    fights = fights_data.all_fights()
+    name = _same_fight(s, fights)
+    if name and sum(1 for o in steps if o.get("type") == "boss" and _same_fight(o, fights) == name) == 1:
+        return f"fight:{name}"
+    return s.get("id") or s.get("boss") or "fight"
+
+
 def expand(route: dict) -> dict:
     """The route as the coach uses it: fight steps also listed as cards by their id."""
     route = inline_cards(route)
@@ -179,7 +202,8 @@ def expand(route: dict) -> dict:
         if not s.get("id"):
             s["id"] = step_id(route, s.get("title", ""))
         s["boss"] = s["id"]
-        card = {"name": s.get("title") or s["id"], "turns": list(s.get("lines") or [])}
+        card = {"name": s.get("title") or s["id"], "turns": list(s.get("lines") or []),
+                "learn_as": learn_as(route["steps"], s)}
         if s.get("backup"):
             card["if_wrong"] = s["backup"]
         for f in FIGHT_FIELDS:
@@ -191,7 +215,8 @@ def expand(route: dict) -> dict:
             # their HP, done once every kind has been fought as many times as it says.
             card["groups"] = groups
             card["hp"] = sorted({h for g in groups for h in g["hp"]})
-            card["fights"] = sum(max(1, int(g.get("count") or 1)) for g in groups)
+            card["fights"] = (sum(max(1, int(g.get("count") or 1)) for g in groups)
+                              if not card.get("any_count") else max(2, len(groups)))
         bosses[s["id"]] = card
     route["bosses"] = bosses
     return route

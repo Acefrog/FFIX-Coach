@@ -59,12 +59,6 @@ def _bars_filling(old: list[int], new: list[int]) -> bool:
     return any(0 < n - o <= MAX_ATB_STEP for o, n in zip(old, new))
 
 
-def _fmt_igt(frames: int) -> str:
-    """FFIX's in-game timer counts frames; shown as h:mm:ss assuming 60 fps."""
-    secs = frames // 60
-    return f"IGT {secs // 3600}:{secs // 60 % 60:02d}:{secs % 60:02d}"
-
-
 def step_key(s: dict) -> str:
     """A step's identity: what learned screens, progress and edits find it by."""
     if s["type"] == "boss":

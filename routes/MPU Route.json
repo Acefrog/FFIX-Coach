@@ -1,0 +1,497 @@
+{
+ "name": "MPU Route",
+ "steps": [
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "Beginning",
+   "lines": [
+    "Cursor: Memory",
+    "Camera: Fixed",
+    "Movement: Run",
+    "Speed: Fast",
+    "Message: Fast",
+    "Target Window: Always",
+    "",
+    "[Masked Man]"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Masked Man",
+   "lines": [
+    "Steal Mage Masher",
+    "KO All"
+   ],
+   "inside": true,
+   "id": "masked_man",
+   "preset": "Masked Man",
+   "hp": [
+    188
+   ],
+   "hp_names": {
+    "188": "Masked Man"
+   },
+   "screen": 50
+  },
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "Alexandria",
+   "lines": [
+    "1x Tent (Steeple entrance)",
+    "[King Leo]",
+    "? Gil (Swordfight)",
+    "",
+    "Zidane: Optimize",
+    "",
+    "[Steiner I]",
+    "[Steiner II]",
+    "[Bomb]"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "King Leo",
+   "lines": [
+    "Kill Zenero/Benero",
+    "ATB Zidane & Blank"
+   ],
+   "inside": true,
+   "id": "new_sub_step",
+   "preset": "King Leo",
+   "hp": [
+    186
+   ],
+   "hp_names": {
+    "186": "King Leo"
+   },
+   "screen": 62
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Steiner I",
+   "lines": [
+    "Zidane: Attack x2",
+    "#If 84 dmg, Blank/Cinna attacks"
+   ],
+   "inside": true,
+   "id": "steiner",
+   "preset": "Steiner 1",
+   "hp": [
+    169
+   ],
+   "hp_names": {
+    "169": "Steiner"
+   },
+   "screen": 57
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Steiner II",
+   "lines": [
+    "KO all",
+    "#Fast ATB = Zidane: Attack, Vivi: Fire"
+   ],
+   "inside": true,
+   "id": "new_sub_step_2",
+   "preset": "Steiner 2",
+   "hp": [
+    167
+   ],
+   "hp_names": {
+    "167": "Steiner"
+   },
+   "screen": 67
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Bomb",
+   "lines": [
+    "KO Zidane (ATB on Grow)",
+    "KO Vivi/Marcus (On dialogue)",
+    "ATB Grow"
+   ],
+   "inside": true,
+   "id": "bomb",
+   "preset": "Steiner 3 + Bomb",
+   "hp": [
+    162,
+    38
+   ],
+   "hp_names": {
+    "162": "Steiner",
+    "38": "Bomb"
+   },
+   "screen": 60
+  },
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "Evil Forest I",
+   "lines": [
+    "One random encounter = Level 2 Zidane",
+    "#No detrance on Prison Cage I",
+    "",
+    "[Prison Cage I]",
+    "[Prison Cage II]",
+    "",
+    "1x Ether (Vivi's room)",
+    "1x Ether (Outside Steiner's room)",
+    "",
+    "[Baku Menu]",
+    "[Baku]",
+    "",
+    "1x Ether (Steiners room)"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Prison Cage I",
+   "lines": [
+    "Zidane: Free Energy",
+    "Steiner: Attack",
+    "",
+    "Zidane: Attack"
+   ],
+   "inside": true,
+   "id": "new_sub_step_3",
+   "preset": "Prison Cage 1",
+   "hp": [
+    513
+   ],
+   "hp_names": {
+    "513": "Prison Cage"
+   },
+   "screen": 251
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Prison Cage II",
+   "lines": [
+    "Zidane, Steiner: Attack x2",
+    "",
+    "Zidane: Steal Broadsword",
+    "Steiner: Attack"
+   ],
+   "inside": true,
+   "id": "new_sub_step_4",
+   "backup": "Iron Sword backup if steal failed",
+   "preset": "Prison Cage 2",
+   "hp": [
+    533,
+    67
+   ],
+   "hp_names": {
+    "533": "Prison Cage",
+    "67": "Prison Cage"
+   },
+   "screen": 251
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "Baku Menu",
+   "lines": [
+    "Zidane: Optimize"
+   ],
+   "inside": true,
+   "when": "Leather Wrist = 1"
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Baku",
+   "lines": [
+    "Zidane: Attack x3",
+    "",
+    "Heal as needed"
+   ],
+   "inside": true,
+   "id": "baku",
+   "preset": "Baku",
+   "hp": [
+    202
+   ],
+   "hp_names": {
+    "202": "Baku"
+   },
+   "screen": 202
+  },
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "Evil Forest II",
+   "lines": [
+    "#Flying Flower - Steiner: Firesword",
+    "#Goblins - Zidane/Steiner: Attack",
+    "#Wolf - Zidane: Attack, Vivi: Fire",
+    "",
+    "Heal Steiner/Vivi before if needed",
+    "[Plant Brain]",
+    "[Plant Brain menu]",
+    "[Plant Spiders]"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Plant Brain",
+   "lines": [
+    "Suicide Zidane as quickly as you can to get Blank to show up.",
+    "Once Blank arrives do these in any order:",
+    "Steiner - Fire Sword",
+    "Vivi - Fire",
+    "Blank - Attack",
+    "",
+    "*If Zidane is blinded by darkness and misses himself--Cast fire on him with Vivi."
+   ],
+   "inside": true,
+   "id": "new_sub_step_5",
+   "preset": "Plant Brain",
+   "hp": [
+    916,
+    510
+   ],
+   "hp_names": {
+    "916": "Plant Brain",
+    "510": "Plant Brain"
+   },
+   "screen": 257
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "Plant Brain menu",
+   "lines": [
+    "Items:",
+    "  PD & Potion: Zidane",
+    "  Cure Darkness",
+    "",
+    "Equipment:",
+    "  Blank: Broadsword, -Silk Shirt, -Leather Hat",
+    "  Zidane: Optimize, Wrist"
+   ],
+   "inside": true
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "Plant Brain menu",
+   "lines": [
+    "Items:",
+    "  PD & Potion: Zidane",
+    "  Eye Drop: Steiner, Blank, Vivi",
+    "",
+    "Equipment:",
+    "  Blank: Broadsword, -Silk Shirt, -Leather Hat",
+    "  Zidane: Optimize, Wrist",
+    "  Steiner: Optimize",
+    "",
+    "Abilties:",
+    "  Steiner: Bird Killer, Bug Killer"
+   ],
+   "inside": true,
+   "when": "Broadsword = 1"
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Plant Spiders",
+   "lines": [
+    "3-4 Spiders:",
+    "  KO Blank/Steiner",
+    "  Vivi: Fire(all)",
+    "",
+    "2 Spiders:",
+    "  KO Blank/Steiner/Vivi",
+    "  Zidane: Attack"
+   ],
+   "inside": true,
+   "id": "new_sub_step_6",
+   "preset": "Plant Spiders",
+   "hp": [
+    33
+   ],
+   "hp_names": {
+    "33": "Plant Spider"
+   },
+   "screen": 259
+  },
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "Ice Cavern",
+   "lines": [
+    "1x Tent (On the ledge)",
+    "",
+    "Heal before and After Sealion if required",
+    "",
+    "[Sealion]"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Sealion",
+   "lines": [
+    "Sealion counters every 2 Attacks",
+    "If HP < 37 = Heal!",
+    "",
+    "  Zidane: Attack x3 (Black Waltz)",
+    "",
+    "  Zidane: Attack x2",
+    "  Zidane: Heal",
+    "  Zidane: Attack x1",
+    "  Zidane: Heal",
+    "  Zidane: Attack x2",
+    "",
+    "#DMG Rolls: 88, 92, 96, 100 (Level 4)",
+    "#Dmg Rolls: 84, 88, 92, 96 (Level 3)"
+   ],
+   "inside": true,
+   "id": "new_sub_step_7",
+   "preset": "Black Waltz 1 + Sealion",
+   "hp": [
+    229,
+    472
+   ],
+   "hp_names": {
+    "229": "Black Waltz 1",
+    "472": "Sealion"
+   },
+   "screen": 308
+  },
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "Dali",
+   "lines": [
+    "Garden > City > Bar > City > Bar > City > Vivi",
+    "1x Potion",
+    "",
+    "[Dali Shop]",
+    "[Dali Underground]",
+    "",
+    "135 Gil (Top Right)",
+    "1x Hi-Potion (Bottom)",
+    "",
+    "[Mountain/Base]",
+    "[Black Waltz 2]",
+    "[Black Waltz 3]"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "Dali Shop",
+   "lines": [
+    "Buy:",
+    "  1x Leather Wrist",
+    "  3-4x Wrists",
+    "  3x Feather Hats",
+    "  1x Iron Sword"
+   ],
+   "inside": true,
+   "when": "Broadsword = 0 and Leather Wrist = 0"
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "Dali Shop",
+   "lines": [
+    "Buy:",
+    "  1x Leather Wrist",
+    "  3-4x Wrists",
+    "  3x Feather Hats"
+   ],
+   "inside": true,
+   "when": "Broadsword = 1"
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "Dali Shop",
+   "lines": [
+    "Buy:",
+    "  3-4x Wrists",
+    "  3x Feather Hats",
+    "  1x Iron Sword"
+   ],
+   "inside": true,
+   "when": "Leather Wrist = 1"
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "Dali Underground",
+   "lines": [
+    "Dagger: Feather Hat",
+    "Zidane: Mage Masher, Leather Wrist, Leather Shirt",
+    "Vivi: Silk Shirt"
+   ],
+   "inside": true
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "Mountain/Base",
+   "lines": [
+    "Equipment:",
+    "  Steiner: Optimize",
+    "",
+    "Abilties:",
+    "  Steinmer: Bird Killer, Bug Killer"
+   ],
+   "inside": true,
+   "when": "Broadsword = 0 and Iron Sword = 1"
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Black Waltz 2",
+   "lines": [
+    "Zidane - Attacks, Steiner Fire Swords (Attacks if Vivi is KO’d)"
+   ],
+   "inside": true,
+   "id": "new_sub_step_8",
+   "preset": "Black Waltz 2",
+   "hp": [
+    1030
+   ],
+   "hp_names": {
+    "1030": "Black Waltz 2"
+   },
+   "screen": 451
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Black Waltz 3",
+   "lines": [
+    "Zidane - Attack (This will cause BW3 to take flight into the air)",
+    "(HOLD CONFIRM TO GET ZIDANE’S FIRST ATTACK IMMEDIATELY AND GO FIRST)",
+    "Steiner - Fire Sword & Vivi Cast Double Fire",
+    "Zidane - Steal (You can get a Steepled Hat, Linen Cuirass, or Silver Gloves)",
+    "Steiner - Fire Sword & Vivi Cast Double Fire"
+   ],
+   "inside": true,
+   "id": "black_waltz_3",
+   "preset": "Black Waltz 3",
+   "hp": [
+    1128
+   ],
+   "hp_names": {
+    "1128": "Black Waltz 3"
+   },
+   "screen": 501
+  }
+ ]
+}

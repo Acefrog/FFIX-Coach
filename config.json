@@ -3,13 +3,9 @@
   "ram_base": null,
   "poll_ms": 100,
   "keys": {
-    "prev_turn": "F5",
-    "next_turn": "F6",
+    "learn": "F6",
     "prev_step": "F7",
     "next_step": "F8",
-    "skip_back": "Shift+F7",
-    "skip_forward": "Shift+F8",
-    "switch_branch": "Shift+F5",
     "toggle_overlay": "F9",
     "quit": "F10"
   },
@@ -318,5 +314,6 @@
       }
     }
   },
-  "route": "Caracarn WR"
+  "route": "MPU Route",
+  "editor_dark": true
 }

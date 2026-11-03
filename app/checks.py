@@ -422,10 +422,10 @@ class ChecksMixin:
     def _needs_f8(self, state: GameState) -> bool:
         """A walk or menu step the coach can't move on from by itself yet: nothing on it it
         can check (that it waits for), the next steps' screens not learned, and no known
-        fight straight after. F8 there is expected, and teaches it."""
+        fight straight after. The Learn key there teaches it."""
         s = self.current()
-        if s["type"] == "boss" or self.step + 1 >= len(self.steps):
-            return False
+        if s["type"] == "boss" or self.step + 1 >= len(self.steps) or s.get("end_screen") is not None:
+            return False                               # (a finish screen picked in the editor ends it)
         pick = {i for i, _ in pickup_targets(_pickup_lines(s))}
         for i, line in enumerate(check_lines(s)):
             if is_optional(line) or (s["type"] == "move" and instructions_after_checks(step_lines(s))):
@@ -442,6 +442,6 @@ class ChecksMixin:
             i = j
         k = self._next_index(self.step, skip_pending=True)    # the step after it (past its sub-steps)
         nxt = self.steps[k]
-        if nxt["type"] == "boss" and (self.bosses.get(nxt["boss"], {}).get("hp") or self._learned_form(k)):
+        if nxt["type"] == "boss" and self._fight_known(k):
             return False
         return True

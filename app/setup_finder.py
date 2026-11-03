@@ -49,8 +49,6 @@ TASKS = [
      lambda a: a.get("party_slots")),
     ("ability", "Support abilities (by hand)", "Rarely needed: worked out from Levels already", True,
      lambda a: len(a.get("ability_bits") or {})),
-    ("battleid", "Battle number (optional)", "Three fights (savestates help). Fights are told apart anyway", False,
-     lambda a: a.get("battle_id")),
 ]
 
 

@@ -2,7 +2,7 @@
 
 Used by the editor: for each walk or menu step, whether the coach can move on from it
 by itself (its lines can be checked, the next step's screen has been learned, or the
-next fight can be recognised) or still needs F8; for each fight step, how it will be
+next fight can be recognised) or still needs the Learn key; for each fight step, how it will be
 recognised; and, from logs/run_log.txt, which steps needed F8 or F7 last run.
 No window needed (tested on its own).
 """
@@ -53,34 +53,51 @@ def _checkable(s: dict) -> tuple[int, int, bool]:
 
 
 def taught_wrong(route: dict, learned, i: int) -> list[int] | None:
-    """The HP fight step i learned, if it doesn't fit the HP typed for it (an F8 in another
-    fight taught it): the coach ignores what was learned with it."""
+    """The HP fight step i learned, if it doesn't fit the HP typed for it (taught in another
+    fight): the coach ignores what was learned with it."""
     from coach import hp_candidates
     s = route["steps"][i]
     typed = route["bosses"].get(s.get("boss"), {}).get("hp")
-    fp = learned.fingerprint(s["boss"]) or {}
-    form = fp.get("form") or learned.formation(s["boss"])
+    form = learned.formation(fight_keys(s, route["bosses"].get(s.get("boss"), {}))[0])
     if not typed or not form or int(s.get("fights") or 1) > 1 or 65535 in form:
         return None
     live = set().union(*(hp_candidates(h) for h in form))
     return None if live & set(typed) else form
 
 
-def fight_known(route: dict, learned, i: int) -> list[str]:
-    """How fight step i can be recognised (empty: it can't yet)."""
+def fight_keys(s: dict, card: dict, steps: list | None = None) -> list[str]:
+    """What each of a fight step's fights is learned under (as the coach keys them). From
+    the editor (a step not expanded yet), pass the route's steps."""
+    import routes
+    b = card.get("learn_as") or (routes.learn_as(steps, s) if steps is not None else s.get("boss") or s.get("id"))
+    if card.get("groups"):
+        return [f"{b}@{k}" for k in range(len(card["groups"]))]
+    return [b]                                 # (all of a step's fights: one key)
+
+
+def fight_screens(route: dict, learned, i: int) -> list[int]:
+    """The screens fight step i starts from: picked in the editor, then learned."""
     s = route["steps"][i]
-    b = route["bosses"].get(s.get("boss"), {})
-    out = []
-    bad = taught_wrong(route, learned, i)
-    if b.get("battle_id") is not None or (learned.battle_id(s["boss"]) is not None and not bad):
-        out.append("its battle number")
-    if learned.fingerprint(s["boss"]) and not bad:
-        out.append("its enemies (learned)")
-    if b.get("hp"):
-        out.append("HP " + ", ".join(str(h) for h in b["hp"]))
-    elif learned.formation(s["boss"]):
-        out.append("HP " + ", ".join(str(h) for h in learned.formation(s["boss"])) + " (learned)")
+    out = [int(s["screen"])] if s.get("screen") is not None else []
+    for k in fight_keys(s, route["bosses"].get(s.get("boss"), {})):
+        out += [f for f in learned.battle_screens(k) if f not in out]
     return out
+
+
+def fight_known(route: dict, learned, i: int) -> list[str]:
+    """How fight step i is recognised: its HP and the screen it starts from (empty: the
+    coach doesn't know both yet, so the Learn key during it is needed once)."""
+    s = route["steps"][i]
+    card = route["bosses"].get(s.get("boss"), {})
+    if card.get("hp"):
+        hp = "HP " + ", ".join(str(h) for h in card["hp"])
+    else:
+        got = next((learned.formations(k)[0] for k in fight_keys(s, card) if learned.formations(k)), None)
+        hp = "HP " + ", ".join(str(h) for h in got) + " (learned)" if got else None
+    screens = fight_screens(route, learned, i)
+    if not hp or not screens:
+        return []
+    return [hp, "starting from " + " / ".join(field_name(f) for f in screens)]
 
 
 def _after(steps: list[dict], i: int, n: int) -> list[int]:
@@ -112,10 +129,13 @@ def step_report(route: dict, learned=None) -> list[dict]:
             n = int(s.get("fights") or 1)
             if known:
                 how = "Recognised by " + " and ".join(known)
-                if n > 1:
+                if s.get("any_count"):
+                    how += " (any number of fights: ends on the next step's room)"
+                elif n > 1:
                     how += f" ({n} fights)"
             else:
-                how = "Can't be recognised yet: press F8 during it once to teach it (or type its HP)"
+                how = ("Can't be recognised yet: pick where it starts (and its HP) in the editor, "
+                       "or press the Learn key (F6) during it once to teach it")
             out.append({"ok": bool(known), "how": how, "screen": screen})
             continue
         need, opt, menu = _checkable(s)
@@ -126,6 +146,8 @@ def step_report(route: dict, learned=None) -> list[dict]:
         if need:
             ways.append(f"when its {need} checked line{'s are' if need > 1 else ' is'} done"
                         + (" and the menu is closed" if menu else ""))
+        if s.get("end_screen") is not None:
+            ways.append(f"on reaching {field_name(int(s['end_screen']))}, where it finishes")
         nxt = _after(steps, i, FIELD_LOOKAHEAD)
         for j in nxt:
             f = steps[j].get("screen") if steps[j].get("screen") is not None else learned.field(_key(steps[j]), name)
@@ -140,10 +162,10 @@ def step_report(route: dict, learned=None) -> list[dict]:
             if opt and not need:
                 how += f" ({opt} \"if\" line{'s' if opt > 1 else ''} not waited for)"
         else:
-            how = ("Needs F8 here: " + ("there's more to do after its last checked line" if after else
-                                        "nothing on it can be checked") +
-                   " and the next step's screen isn't learned yet. F8 once teaches it "
-                   "(it learns where the next step starts).")
+            how = ("Needs the Learn key here: " + ("there's more to do after its last checked line" if after else
+                                                    "nothing on it can be checked") +
+                   " and the next step's screen isn't known yet. Press the Learn key (F6) once "
+                   "where the next step starts, or pick it under Area.")
         out.append({"ok": bool(ways), "how": how, "screen": screen})
     return out
 
@@ -250,5 +272,5 @@ def run_problems(route: dict, learned=None, log_path: Path | None = None) -> lis
     stuck = [i for i, x in enumerate(rep) if not x["ok"] and route["steps"][i]["type"] != "boss"]
     if stuck:
         out.append((stuck[0], None, f"{len(stuck)} walk/menu step(s) can't move on by themselves yet "
-                                    f"(⚑ in the list): F8 there once teaches them"))
+                                    f"(⚑ in the list): the Learn key there once teaches them"))
     return out

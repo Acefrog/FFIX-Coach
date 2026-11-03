@@ -6,7 +6,7 @@ Left: every step in order (search and filter by disc). Middle: edit the selected
 step (fight steps are written the same way, plus their HP). Right: how it looks on
 the coach panel, the line types, and checks.
 
-Ctrl+S saves (the old route is copied to backups/ first, the last 30 kept).
+Ctrl+S saves (over the old route: no copies are kept).
 The coach picks up a saved route by itself, even mid-run.
 """
 
@@ -25,8 +25,7 @@ import routes  # noqa: E402
 from syntax import expand_headers, classify, line_segments, steal_targets, find_item, story_parts, substep_call  # noqa: E402
 from coach import parse_when, when_label, when_text, step_numbers, OPS, AP_OPS, ap_subjects, ap_subject  # noqa: E402
 
-from paths import BACKUPS, LEARNED, write_atomic  # noqa: E402
-KEEP_BACKUPS = 30
+from paths import LEARNED, write_atomic  # noqa: E402
 CHARS = ["zidane", "vivi", "garnet", "steiner", "freya", "quina", "eiko", "amarant"]
 KIND_NAME = {"move": "Walk", "menu": "Menu", "boss": "Fight"}
 KIND_OF = {v: k for k, v in KIND_NAME.items()}
@@ -98,27 +97,11 @@ def modernise(route: dict) -> int:
     return n
 
 
-def save_route(route: dict, path: Path, backups: Path = BACKUPS) -> str:
+def save_route(route: dict, path: Path) -> str:
+    """Saves the route over the old file (no copy of the old one is kept)."""
     modernise(route)
-    backups.mkdir(exist_ok=True)
-    if path.exists():
-        stamp = time.strftime("%Y%m%d-%H%M%S")
-        (backups / f"{path.stem} {stamp}.json").write_bytes(path.read_bytes())
-        # Only this route's own backups ("Muttski 20261029-001319"), not those of a route
-        # whose name merely starts the same ("Muttski 2026").
-        mine = re.compile(re.escape(path.stem) + r" \d{8}-\d{6}\.json", re.I)
-        own = [f for f in backups.glob(f"{glob_escape(path.stem)} 2*.json") if mine.fullmatch(f.name)]
-        for f in sorted(own)[:-KEEP_BACKUPS]:
-            try:
-                f.unlink()
-            except OSError:
-                pass
     write_atomic(path, json.dumps(route, indent=1, ensure_ascii=False))   # the coach never reads half a file
     return time.strftime("%H:%M:%S")
-
-
-def glob_escape(s: str) -> str:
-    return re.sub(r"([\[\]*?])", r"[\1]", s)
 
 
 def step_key(s: dict) -> str:
@@ -292,10 +275,6 @@ def take_step(route: dict, other: dict, row: dict) -> int:
     return at
 
 
-def text_lines(text: str) -> list[str]:
-    return [l.strip() for l in text.splitlines() if l.strip()]
-
-
 def step_text_lines(text: str) -> list[str]:
     """A step's lines as typed: an empty line is a gap on the panel (one gap at most in a
     row, none at the start or end); a line starting with spaces or a Tab is indented
@@ -310,10 +289,6 @@ def step_text_lines(text: str) -> list[str]:
     while out and not out[-1]:
         out.pop()
     return out
-
-
-def hp_values(text: str) -> list[int]:
-    return parse_hp(text)[0]
 
 
 def parse_hp(text: str) -> tuple[list[int], dict[str, str]]:
@@ -436,7 +411,7 @@ def run() -> int:
             for text, cmd, tip in (("New…", self.new_route, "Start a new, empty route"),
                                    ("Copy…", self.copy_route, "Make a copy of this route"),
                                    ("Rename…", self.rename_route, "Rename this route"),
-                                   ("Delete", self.delete_route, "Delete this route (a copy goes to backups)"),
+                                   ("Delete", self.delete_route, "Delete this route for good"),
                                    ("Compare…", self.open_compare, "Compare this route with another one")):
                 tooltip(ttk.Button(top, text=text, command=cmd), tip).pack(side="left", padx=2)
             self.b_save = ttk.Button(top, text="Save", command=self.save, width=8)
@@ -604,6 +579,8 @@ def run() -> int:
             st.configure("TCombobox", fieldbackground=th["field"], foreground=th["fg"], background=th["button"],
                          arrowcolor=th["fg"])
             st.map("TCombobox", fieldbackground=[("readonly", th["field"])], foreground=[("readonly", th["fg"])])
+            st.configure("Learned.TCombobox", fieldbackground=th["field"], foreground=th["muted"],
+                         background=th["button"])
             st.configure("Treeview", background=th["field"], fieldbackground=th["field"], foreground=th["fg"],
                          rowheight=24)
             st.map("Treeview", background=[("selected", th["sel_bg"])], foreground=[("selected", th["sel_fg"])])
@@ -850,6 +827,7 @@ def run() -> int:
                                        if (substep_call(l) or "").lower() == old.strip().lower() else l
                                        for l in parent.get("lines", [])]
             self._live(title, set_title)
+            self._area_row(s)
             self._label("Branches")
             if self._sub_row(s):
                 pass
@@ -879,6 +857,81 @@ def run() -> int:
             if fight:
                 self._fight_extras(s)
 
+        def _learned_screens(self, s: dict) -> list[int]:
+            """What the coach knows without a screen picked here: where a fight starts from
+            (learned, or the fight list's own), or where a walk/menu step came up."""
+            if s.get("screen") is not None:
+                return []
+            if s["type"] == "boss":
+                learned = getattr(self, "learned", None) or __import__("report").load_learned()
+                out = []
+                for k in self._fight_keys(s):
+                    out += [f for f in learned.battle_screens(k) if f not in out]
+                return out
+            rep = getattr(self, "rep", None) or []
+            got = rep[self.sel].get("screen") if self.sel < len(rep) else None
+            return [got] if got is not None and s.get("screen") is None else []
+
+        def _area_row(self, s: dict):
+            """Where the step starts and finishes. For a fight, where it starts from: with its
+            HP, that's how the coach recognises it. A screen picked here is known from the
+            first run; left empty, what the coach learns is used."""
+            from field_names import FIELD_NAMES, field_name
+            fight = s["type"] == "boss"
+            self._label("Area")
+            row = ttk.Frame(self.mid)
+            row.pack(fill="x")
+            choices = [""] + [f"{n} · {name}" for n, name in sorted(FIELD_NAMES.items())]
+
+            def picker(label, key, tip, learned=()):
+                ttk.Label(row, text=label, style="Muted.TLabel").pack(side="left")
+                box = ttk.Combobox(row, values=choices, width=30)
+                n = s.get(key)
+                # Nothing picked: what the coach learned shows here, greyed (it's used as it is).
+                shown = (f"{learned[0]} · {FIELD_NAMES.get(learned[0], '?')} (learned)"
+                         if n is None and learned else "")
+                box.set(f"{n} · {FIELD_NAMES.get(int(n), '?')}" if n is not None else shown)
+                if shown:
+                    box.configure(style="Learned.TCombobox")
+                    tip += ("\n\nLearned on a run" +
+                            (f" (also: {', '.join(field_name(f) for f in learned[1:])})" if len(learned) > 1 else "") +
+                            ". Pick a screen to set it yourself.")
+                box.pack(side="left", padx=(4, 12))
+                tooltip(box, tip)
+
+                def narrow(e):
+                    if e.keysym in ("Up", "Down", "Return", "Escape", "Tab"):
+                        return
+                    t = box.get().strip().lower()
+                    box.configure(values=[c for c in choices if t in c.lower()] if t else choices)
+
+                def commit(_e=None):
+                    text = box.get().strip()
+                    if shown and text == shown:
+                        return                         # the learned one, left as it is
+                    m = re.match(r"(\d+)", text)
+                    if text and not m:
+                        return                         # still typing a name: pick one from the list
+                    v = int(m.group(1)) if m else None
+                    if v == s.get(key):
+                        return
+                    self.change(lambda: s.__setitem__(key, v) if v is not None else s.pop(key, None))
+                box.bind("<KeyRelease>", narrow)
+                for ev in ("<<ComboboxSelected>>", "<Return>", "<FocusOut>"):
+                    box.bind(ev, commit)
+
+            learned = self._learned_screens(s)
+            if fight:
+                picker("Fight starts from", "screen",
+                       "The screen you're on when this fight begins. With its HP, that's how the coach "
+                       "knows it's this fight (type a name to search, e.g. Dali)", learned)
+            else:
+                picker("Starts on", "screen",
+                       "The screen this step starts on: reaching it moves the route here "
+                       "(type a name to search, e.g. Dali)", learned)
+                picker("Finishes on", "end_screen",
+                       "Reaching this screen finishes the step, whatever is left on it")
+
         def _learned_line(self, s: dict):
             """How the coach moves on from this step (or recognises this fight) with what it
             has learned so far, and a button to forget what it learned here."""
@@ -890,14 +943,11 @@ def run() -> int:
             row.pack(fill="x", pady=(0, 6))
             fight = s["type"] == "boss"
             text = ("✓ " + ("Recognised" if fight else "Moves on by itself") if info["ok"] else
-                    "\u2691 " + ("F8 in this fight once" if fight else "F8 here once"))
-            if info.get("screen") is not None and s["type"] != "boss":
-                from field_names import field_name
-                text += f"  · starts on {field_name(info['screen'])}"
+                    "\u2691 " + ("Learn key in this fight once" if fight else "Learn key here once"))
             lab = ttk.Label(row, text=text, style="Good.TLabel" if info["ok"] else "Warn.TLabel",
                             wraplength=max(260, self.mid.winfo_width() - 110), justify="left")
             learned_here = info.get("screen") is not None or (
-                s["type"] == "boss" and any(self.learned.formation(k) or self.learned.fingerprint(k)
+                s["type"] == "boss" and any(self.learned.formation(k) or self.learned.battle_screens(k)
                                             for k in self._fight_keys(s)))
             if learned_here:
                 b = ttk.Button(row, text="Forget", width=7, command=lambda: self._forget(s))
@@ -906,11 +956,9 @@ def run() -> int:
             lab.pack(side="left", fill="x", expand=True)
             tooltip(lab, info["how"])
 
-        @staticmethod
-        def _fight_keys(s: dict) -> list[str]:
-            sid = s.get("id") or s.get("boss")
-            n = int(s.get("fights") or 1)
-            return [sid] + [f"{sid}#{k}" for k in range(2, n + 1)] if sid else []
+        def _fight_keys(self, s: dict) -> list[str]:
+            import report
+            return report.fight_keys(s, s, self.route["steps"]) if (s.get("id") or s.get("boss")) else []
 
         def _forget(self, s: dict):
             import report
@@ -927,7 +975,7 @@ def run() -> int:
             self.refresh_side()
 
         # -- branches: a step (14) and what to do instead (14a) --------------
-        PICK = "(Shift+F5 only)"
+        PICK = "(only when you reach it)"
 
         @staticmethod
         def _when_parts(s: dict) -> list[str]:
@@ -1085,26 +1133,6 @@ def run() -> int:
                     self.select(self.sel)
                 button(row, "+ Condition", add_cond, "Only show this step when…")
 
-        def _ways(self) -> list[tuple[str, str]]:
-            """The ways of the route's branches, as (label, condition): "12a's way (Broadsword < 2)"
-            and "12's way (Broadsword >= 2)"."""
-            from coach import _NOT
-            steps = self.route["steps"]
-            nums = step_numbers(steps)
-            out, seen = [], set()
-            for k, st in enumerate(steps):
-                w = parse_when(st.get("when", "")) if st.get("alt") else None
-                if not w or w[0] != "cmp":
-                    continue
-                p = self._head(k)
-                if not any(steps[j].get("alt") and not steps[j].get("inside") for j in range(p + 1, k)):
-                    for label, cond in ((f"{nums[k]}'s way", when_text(w[1], w[2], w[3])),
-                                        (f"{nums[p]}'s way", when_text(w[1], _NOT[w[2]], w[3]))):
-                        if cond not in seen:
-                            seen.add(cond)
-                            out.append((f"{label} ({cond})", cond))
-            return out
-
         # -- sub-steps: done in the middle of a step, then back to it (11.1) ----
         def _sub_row(self, s: dict) -> bool:
             """For a sub-step: its buttons (nothing about branches), and an optional
@@ -1235,12 +1263,18 @@ def run() -> int:
             row = ttk.Frame(self.mid)
             row.pack(fill="x", pady=(6, 0))
             ttk.Label(row, text="Fight", style="Muted.TLabel").pack(side="left")
-            fights = fights_data.all_fights()
+            import report
+            learned = getattr(self, "learned", None) or report.load_learned()
+            # Only the fights on this step's disc (and the one it's set to, if that's another disc).
+            disc = s.get("disc")
+            fights = [f for f in fights_data.all_fights()
+                      if disc is None or f.get("disc") == disc or f["name"] == s.get("preset")]
             labels = ["Custom"] + [fights_data.label(f) for f in fights]
-            pick = ttk.Combobox(row, values=labels, state="readonly", width=34, height=24)
-            current = next((fights_data.label(f) for f in fights if f["name"] == s.get("preset")), "Custom")
+            pick = ttk.Combobox(row, values=labels, state="readonly", width=40, height=24)
+            current = next((labels[n + 1] for n, f in enumerate(fights) if f["name"] == s.get("preset")), "Custom")
             pick.set(current)
-            tooltip(pick, "Pick a fight to fill in its name and HP, or keep Custom and type your own").pack(
+            tooltip(pick, "Pick a fight to fill in its Starting HP and where it starts from "
+                          "(as learned on any route). Custom: type your own").pack(
                 side="left", padx=6)
             def chosen(_e=None):
                 v = pick.get()
@@ -1248,7 +1282,7 @@ def run() -> int:
                     self.change(lambda: s.pop("preset", None))
                     return
                 f = fights[labels.index(v) - 1]
-                self.change(lambda: fights_data.apply(s, f))
+                self.change(lambda: fights_data.apply(s, f, learned))
             pick.bind("<<ComboboxSelected>>", chosen)
             def save_mine():
                 name = (s.get("title") or "").strip()
@@ -1344,7 +1378,9 @@ def run() -> int:
                         hps = [int(x) for x in re.findall(r"\d+", hpe.get())]
                         new = {"name": name.get().strip(), "hp": hps, "count": c}
                         if {k: g.get(k) for k in new} != new:
-                            self.change(lambda: (g.update(new), s.pop("preset", None)))
+                            same_fight = new["hp"] == list(g.get("hp") or []) and new["name"] == g.get("name")
+                            # (only how many changed: still that fight from the list, as counts are the route's)
+                            self.change(lambda: (g.update(new), None if same_fight else s.pop("preset", None)))
                     for w in (name, hpe, cnt):
                         w.bind("<FocusOut>", save)
                         w.bind("<Return>", save)
@@ -1366,14 +1402,18 @@ def run() -> int:
                                command=lambda: self.change(lambda: s["groups"].append({"name": "", "hp": [], "count": 1})))
                 b.pack(anchor="w", pady=(4, 0))
                 tooltip(b, "Another kind of fight on this step")
-            n = int(s.get("fights") or 1)
-            if n > 1:
-                keys = self._fight_keys(s)
-                got = sum(1 for k in keys if self._learned_fight(k))
-                ttk.Label(self.mid, style="Good.TLabel" if got == n else "Muted.TLabel",
-                          text=(f"✓ All {n} fights learned" if got == n else
-                                f"{got} of {n} fights learned: each is learned when you win it "
-                                "(F8 during one the coach missed)")).pack(anchor="w", pady=(8, 0))
+            if int(s.get("fights") or 1) > 1 or groups:
+                anyv = tk.BooleanVar(value=bool(s.get("any_count")))
+                def set_any():
+                    if anyv.get():
+                        s["any_count"] = True
+                    else:
+                        s.pop("any_count", None)
+                cb = ttk.Checkbutton(self.mid, variable=anyv, command=lambda: self.change(set_any),
+                                     text="Any number: it ends when you reach the next step's room")
+                cb.pack(anchor="w", pady=(8, 0))
+                tooltip(cb, "For fights whose number changes by route: every fight with its HP counts, "
+                            "however many there are (the number above is ignored)")
             lv5 = tk.BooleanVar(value=bool(s.get("lv5")))
             def set_lv5():
                 if lv5.get():
@@ -1388,20 +1428,6 @@ def run() -> int:
             if s.get("needs"):
                 extra += f" · has {len(s['needs'])} HP check(s), kept as they are"
             ttk.Label(self.mid, text=extra, style="Muted.TLabel").pack(anchor="w", pady=(8, 0))
-
-        @staticmethod
-        def _learned_fight(step_id):
-            try:
-                return step_id in json.loads(LEARNED.read_text()).get("fingerprints", {})
-            except (OSError, ValueError):
-                return False
-
-        @staticmethod
-        def _learned_battle_id(step_id):
-            try:
-                return json.loads(LEARNED.read_text()).get("battle_ids", {}).get(step_id)
-            except (OSError, ValueError):
-                return None
 
         def _label(self, text, parent=None):
             ttk.Label(parent or self.mid, text=text, style="Muted.TLabel").pack(anchor="w", pady=(10, 2))
@@ -1680,7 +1706,12 @@ def run() -> int:
                 learn = self.sel < len(rep) and not rep[self.sel]["ok"]
                 if learn:
                     title = "\u2691 " + title          # as on the coach panel: it still has to learn this step
-                p.insert("end", f"{title}\n", ("title", s["type"]))
+                p.insert("end", title, ("title", s["type"]))
+                if s.get("inside") and self.sel > 0:   # a sub-step: its main step, small in brackets
+                    main = next((t for t in reversed(self.route["steps"][:self.sel]) if not t.get("inside")), None)
+                    if main is not None:
+                        p.insert("end", f"  ({main.get('title') or 'the step above'})", "head")
+                p.insert("end", "\n")
                 from coach import line_segments
                 first = range(0)                       # no highlight on the panel any more
                 for i, l in enumerate(s.get("lines", [])):
@@ -1719,18 +1750,6 @@ def run() -> int:
                 if boss and s.get("groups"):          # kinds of fight: how many of each
                     for g in s["groups"]:
                         p.insert("end", f"{g.get('name') or 'Fight'} 0/{g.get('count') or 1}\n", "head")
-                if not boss:
-                    for j in range(self.sel + 1, len(self.route["steps"])):
-                        nxt = self.route["steps"][j]
-                        if not nxt.get("inside"):
-                            break
-                        called = {(substep_call(x) or "").lower() for x in s.get("lines", [])}
-                        if (nxt.get("title") or "").strip().lower() in called:
-                            continue                       # shown where the step calls it
-                        p.insert("end", f"On the way: {nxt.get('title') or 'sub-step'}", "comment")
-                        p.insert("end", "\n")
-                if s.get("inside") and self.sel > 0:
-                    p.insert("end", "Sub-step: goes back to the step above when done\n", "note")
                 if s.get("backup"):
                     p.insert("end", "\n")
                     for bl in s["backup"].split("\n"):
@@ -1964,7 +1983,7 @@ def run() -> int:
                 messagebox.showinfo("Delete route", "This is the only route. Make another one first.",
                                     parent=self.root)
                 return
-            if not messagebox.askyesno("Delete route", f"Delete {self.name}?\n\nA copy goes to the backups folder.",
+            if not messagebox.askyesno("Delete route", f"Delete {self.name}?\n\nIt's gone for good: no copy is kept.",
                                        parent=self.root):
                 return
             gone = self.name
@@ -1972,7 +1991,7 @@ def run() -> int:
             self.saved = json.dumps(self.route, sort_keys=True)   # nothing to save
             self.name = None
             self.open_route(routes.names()[0])
-            self.status.configure(text=f"Deleted {gone} (copy in backups)")
+            self.status.configure(text=f"Deleted {gone}")
 
         # -- comparing with another route -----------------------------------------
         def open_compare(self):

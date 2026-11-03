@@ -292,9 +292,6 @@ class Addresses:
     ability_bits: dict[str, tuple[int, int]] = field(default_factory=dict)
     # Item bag: a list of 2-byte entries (item ID, count); ID 255 = empty. Found by "finder.py items".
     inventory: int | None = None
-    # Which battle this is (FF9's battle scene number): "finder.py battleid".
-    battle_id: int | None = None
-    battle_id_width: int = 2
     gil: int | None = None
     inventory_entries: int = 256
     inventory_id_first: bool = True
@@ -357,9 +354,6 @@ class Addresses:
         if addr.get("row") and addr["row"].get("off") is not None:
             a.row_off, a.row_bit = int(addr["row"]["off"]), int(addr["row"].get("bit", 0))
             a.row_back = int(addr["row"].get("back", 1))
-        if addr.get("battle_id"):
-            a.battle_id = h(addr["battle_id"])
-            a.battle_id_width = int(addr.get("battle_id_width", 2))
         if addr.get("gil"):
             a.gil = h(addr["gil"])
         if addr.get("inventory"):
@@ -397,8 +391,6 @@ class GameState:
     abilities: dict[str, set] = field(default_factory=dict)          # name -> support abilities on
     ability_known: frozenset = frozenset()                           # abilities the coach can see
     items: dict[int, int] | None = None   # item ID -> how many in the bag; None = not set up
-    battle_id: int | None = None          # FF9's number for this battle; None = not set up
-    enemy_blocks: list[bytes] = field(default_factory=list)  # each enemy slot's whole record
     rows: dict[str, str] = field(default_factory=dict)   # name -> "front"/"back"
     gil: int | None = None
     config: dict[str, int] = field(default_factory=dict)   # setting -> masked byte now
@@ -457,8 +449,6 @@ def read_state(ram: RamSource, a: Addresses) -> GameState:
                    for n in recs} if a.ability_bits else {},
         ability_known=frozenset(a.ability_bits),
         items=read_items(ram, a),
-        battle_id=ram.value(a.battle_id, a.battle_id_width) if a.battle_id is not None else None,
-        enemy_blocks=[ram.read(a.slot(k, 0), a.slot_stride) for k in range(PARTY_SLOTS, SLOTS)],
         gil=ram.u32(a.gil) if a.gil is not None else None,
         config={k: ram.u8(addr) & mask for k, (addr, mask, _) in a.config.items()},
         config_values={k: v for k, (_, _, v) in a.config.items()},

@@ -29,7 +29,6 @@ from __future__ import annotations
 import json
 import sys
 import time
-from pathlib import Path
 
 from memory import DuckStationRam, MemoryError_, PS1_RAM_SIZE
 
@@ -690,19 +689,6 @@ def find_abilities(ram: DuckStationRam, who: str, cfg: dict) -> dict[str, list[i
     return {k: list(v) for k, v in learned.items()}
 
 
-def fill_from_order(learned: dict[str, tuple[int, int]], order: list[str]) -> dict[str, tuple[int, int]] | None:
-    """If every learned ability sits where the usual order puts it (one bit each, lowest
-    bit first), work out all the others. None if they don't agree."""
-    items = [(n, off * 8 + bit) for n, (off, bit) in learned.items() if n in order]
-    if len(items) < 2:
-        return None
-    n0, g0 = items[0]
-    start = g0 - order.index(n0)
-    if any(g != start + order.index(n) for n, g in items):
-        return None
-    return {n: divmod(start + i, 8) for i, n in enumerate(order)}
-
-
 def find_row(ram: DuckStationRam, who: str, cfg: dict) -> dict | None:
     """Where a character's row is kept: the one bit near their EXP that flips each time
     they swap rows (and back)."""
@@ -825,71 +811,6 @@ def find_config(ram: DuckStationRam, cfg: dict, only: str | None = None) -> dict
         anchor = addr
         print(f"  Found ({len(cands)} place(s) matched; using 0x{addr:06X}).")
     return found or None
-
-
-# ----------------------------------------------------------------------
-# Battle ID: FF9's number for the battle you're in
-# ----------------------------------------------------------------------
-MAX_BATTLE_ID = 4096
-
-
-def battle_id_candidates(a1: bytes, a2: bytes, a3: bytes, b1: bytes, b2: bytes,
-                         c: bytes | None = None) -> list[int]:
-    """16-bit places that hold one number all through a fight, the same number when the
-    same fight comes round again, and a different one for a different fight."""
-    va1, va2, va3, vb1, vb2 = (u16s(x) for x in (a1, a2, a3, b1, b2))
-    vc = u16s(c) if c is not None else None
-    out = []
-    for i in range(len(va1)):
-        x = va1[i]
-        if not (0 < x < MAX_BATTLE_ID) or x != va2[i] or x != va3[i]:
-            continue
-        y = vb1[i]
-        if y == x or y != vb2[i] or not (0 < y < MAX_BATTLE_ID):
-            continue
-        if vc is not None and (vc[i] in (x, y) or not (0 < vc[i] < MAX_BATTLE_ID)):
-            continue
-        out.append(i * 2)
-    return out
-
-
-def find_battle_id(ram: DuckStationRam) -> int | None:
-    print("Finding which battle you're in. You need three fights; savestates make it quick.")
-    print("Press Enter once each fight has loaded (the enemies are on screen).\n")
-    def two(prompt):
-        if not wait(prompt):
-            return None
-        x = ram.snapshot()
-        _sleep(2.0)
-        return x, ram.snapshot()
-    a = two("Fight 1: any fight.")
-    if a is None:
-        return None
-    b = two("Fight 2: a fight with DIFFERENT enemies (on the same screen if you can).")
-    if b is None:
-        return None
-    if not wait("Fight 3: the SAME enemies as fight 1 (load a savestate from before fight 1)."):
-        return None
-    a3 = ram.snapshot()
-    cands = battle_id_candidates(a[0], a[1], a3, b[0], b[1])
-    print(f"  {len(cands)} place(s) match.")
-    for _ in range(3):
-        if len(cands) <= 1:
-            break
-        if not wait("One more fight with different enemies again (not fight 1's or fight 2's)."):
-            return None
-        c = ram.snapshot()
-        keep = set(battle_id_candidates(a[0], a[1], a3, b[0], b[1], c))
-        cands = [x for x in cands if x in keep]
-        print(f"  {len(cands)} place(s) still match.")
-    if len(cands) != 1:
-        print("Couldn't single it out" if cands else "Nothing matched", end="")
-        print(". Not saved. That's fine: the coach already tells fights apart by their enemies'")
-        print("records, which it learns by itself (no setup).")
-        return None
-    snap = ram.snapshot()
-    print(f"  Using 0x{cands[0]:06X} (this fight: {u16_at(snap, cands[0])}).")
-    return cands[0]
 
 
 # ----------------------------------------------------------------------
@@ -1087,14 +1008,6 @@ def main(argv: list[str] | None = None) -> int:
         addrs["row"] = found
         write_atomic(CONFIG, json.dumps(cfg, indent=2))
         print("Saved for everyone. Restart the coach: \"front row\" / \"back row\" lines now tick.")
-        return 0
-    if what in ("battleid", "battle_id", "battle-id"):
-        addr = find_battle_id(ram)
-        if addr is None:
-            return 1
-        addrs["battle_id"] = f"0x{addr:06X}"
-        write_atomic(CONFIG, json.dumps(cfg, indent=2))
-        print("Saved. Restart the coach: each fight step learns its battle the first time.")
         return 0
     if what in ("gil", "money"):
         addr = find_gil(ram, cfg)

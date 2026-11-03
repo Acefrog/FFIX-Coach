@@ -35,6 +35,7 @@ class Simulator:
     FIELD_CODE = b"\x11" * 64
     BATTLE_CODE = b"\x22" * 64
     CYCLE = 45                               # seconds per round
+    BOSS_SCREEN = 8888                       # the route's fights start from here (simulate mode)
 
     def __init__(self, ram: FakeRam, a: Addresses, next_fight=None):
         self.ram, self.a, self.t = ram, a, 0
@@ -77,10 +78,10 @@ class Simulator:
             self._code(True)
             self._enemies([120])
             self._fight(t)
-        elif phase < 18:                     # back on the field, next screen
+        elif phase < 18:                     # back on the field, next screen (then the boss's)
             self._code(False)
             self._enemies([])
-            r.write(a.field_id, screen + 2)
+            r.write(a.field_id, screen + 2 if phase < 17 else self.BOSS_SCREEN)
             self.boss_hp = []
         elif phase < 40:                     # the route's next fight
             if not self.boss_hp:
@@ -111,8 +112,6 @@ def console_print(view: View) -> None:
         print("  " + line)
     if view.footer:
         print("  " + view.footer)
-    if view.upcoming:
-        print("  Next: " + view.upcoming[0])
     if view.next_title:
         print("  --- Next: " + view.next_title)
         for line in view.next_lines:
@@ -123,13 +122,9 @@ def key_actions(coach: Coach, cfg: dict):
     """The hotkeys from config.json: ({key: what it does}, hide/show key, quit key)."""
     keys = cfg.get("keys", {})
     actions = {
-        keys.get("prev_turn", "F5"): coach.prev_turn,
-        keys.get("next_turn", "F6"): coach.next_turn,
         keys.get("prev_step", "F7"): coach.prev_step,
         keys.get("next_step", "F8"): coach.next_step,
-        keys.get("skip_back", "Shift+F7"): lambda: coach.skip(-1),
-        keys.get("skip_forward", "Shift+F8"): lambda: coach.skip(1),
-        keys.get("switch_branch", "Shift+F5"): coach.switch_branch,
+        keys.get("learn", "F6"): coach.learn,
     }
     return actions, keys.get("toggle_overlay", "F9"), keys.get("quit", "F10")
 
@@ -443,6 +438,9 @@ def main() -> int:
     route = load_route(routes.path(route_name))
     print(f"Route: {route_name}")
     if args.simulate:
+        for st in route["steps"]:                   # the simulator's fights all start from one screen
+            if st["type"] == "boss":
+                st.setdefault("screen", Simulator.BOSS_SCREEN)
         coach = Coach(route, party_slots=addrs.party_slots)
     else:
         # Each start of the coach starts the route from step 1 with no encounters
@@ -536,9 +534,10 @@ def main() -> int:
         if hotkeys.failed:
             print(f"These hotkeys are taken by another app: {', '.join(hotkeys.failed)}. "
                   "Change them in config.json.")
-        print(f"Runs on its own. Keys only to correct it (it learns from each correction): "
-              f"{' / '.join(list(actions)[:4])} = turn-, turn+, step-, step+  ·  "
-              f"{' / '.join(list(actions)[4:])} = skip back / forward (learns nothing)  ·  "
+        k = list(actions)
+        print(f"Runs on its own. Keys only to correct it: "
+              f"{k[0]} / {k[1]} = previous / next step  ·  "
+              f"{k[2]} = learn (this fight / where the next step starts; the route carries on)  ·  "
               f"{toggle_key} = hide/show  ·  {quit_key} = quit")
 
     poll_ms = int(cfg.get("poll_ms", 100))

@@ -16,7 +16,7 @@ import tkinter as tk
 import tkinter.font as tkfont
 
 from coach import View
-from layout import MIN_BAR_HEIGHT, MIN_BAR_WIDTH, black_bar  # noqa: F401
+from layout import black_bar
 
 COLORS = {
     "bg": "#000000",          # matches the black bar
@@ -175,6 +175,21 @@ class Overlay:
         lbl.pack(fill="x", anchor="w")
         return lbl
 
+    def _title(self, title, note, fg):
+        """The step's title; a sub-step's main step after it, small and in brackets."""
+        if not note:
+            self._label(title, "title", fg, pady=2)
+            return
+        t = tk.Text(self.frame, font=self.fonts["title"], fg=fg, bg=COLORS["bg"], wrap="word", height=1,
+                    borderwidth=0, highlightthickness=0, padx=0, pady=2, cursor="arrow", width=1)
+        t.tag_configure("note", font=self.fonts["small"], foreground=COLORS["muted"])
+        t.insert("end", title)
+        t.insert("end", f"  ({note})", ("note",))
+        t.pack(fill="x", anchor="w")
+        avail = max(60, self.width - 20)
+        wide = self.fonts["title"].measure(title) + self.fonts["small"].measure(f"  ({note})")
+        t.configure(height=max(1, -(-wide // avail)), state="disabled")
+
     def _rich(self, prefix, segs, font, fg, bg, red, pady=0):
         """A line with some parts in red (things to take off)."""
         t = tk.Text(self.frame, font=self.fonts[font], fg=fg, bg=bg, wrap="word", height=1,
@@ -205,7 +220,7 @@ class Overlay:
             w.destroy()
         self._label(view.header, "small", COLORS["muted"])
         color = {"boss": COLORS["boss"], "menu": COLORS["menu"]}.get(view.kind, COLORS["text"])
-        self._label(view.title, "title", color, pady=2)
+        self._title(view.title, view.title_note, color)
 
         for text, tone in view.badges:
             self._label(f" {text} ", "small", COLORS["bg"], bg=COLORS.get(tone, COLORS["info"])).pack_configure(pady=1)
@@ -285,8 +300,6 @@ class Overlay:
                 if first:
                     lbl.pack_configure(pady=(4, 0))
                 first = False
-        if view.upcoming:
-            self._label("Next: " + view.upcoming[0], "small", COLORS["muted"], pady=2)
         if view.next_title and self.with_next:
             self._draw_next(view)
 
