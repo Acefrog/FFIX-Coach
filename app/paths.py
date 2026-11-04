@@ -11,7 +11,7 @@ LEARNED = ROOT / "learned.json"          # what the coach has learned (screens, 
 ROUTES = ROOT / "routes"                 # one file per route
 PROGRESS = ROOT / "progress"             # where each route was left (only if resume_progress is on)
 FIGHTS_CUSTOM = ROOT / "fights_custom.json"   # fights you saved to the editor's fight list
-STOP_FILE = ROOT / "stop_coach"           # made by the launcher's Stop coach button
+STOP_FILE = ROOT / "stop_coach"           # (a stop asked for from outside: the coach quits)
 LOGS = ROOT / "logs"                     # what the coach saw, for checking a run afterwards
 
 

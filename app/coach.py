@@ -31,17 +31,18 @@ Where each part lives (Coach is put together from them; they share its state):
 
 from __future__ import annotations
 
+import copy
 import json
 import time
 from pathlib import Path
 
-from field_names import field_name
+from field_names import field_name, place
 from memory import GameState
 from tuning import (ATB_DROP, CAPPED_HP, CAPPED_SETTLE, CLEARED_SECONDS, IDENTIFY_WITHIN, IGT_BACK,
                     IGT_MAX_STEP, IGT_NEW_GAME, IGT_RESET_CONFIRM, IGT_TRUST,
                     LOADING_HP, LOOKAHEAD_STEPS, MAX_SCREEN, NO_SCREEN, SCRIPT_HP, STALE_SECONDS,
                     UNDO_WINDOW)
-from steps import _bars_filling, _step_moves, step_key
+from steps import _bars_filling, _step_moves, check_lines, step_key, step_lines
 from learned import Learned
 from branches import BranchesMixin, step_numbers
 from fights import FightsMixin
@@ -93,10 +94,12 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
         self.shop_peak: dict[int, int] = {}           # most of each item seen since
         self.shop_ticked: set[int] = set()            # shop lines done (stay done)
         self.tick_step: int | None = None
+        self.optimize_base: dict[int, list[int]] = {}  # an Optimize line: the gear once the lines before it were done
+        self._parent_ticks: tuple[int, dict] | None = None   # a step's ticks while you're in one of its sub-steps
         self.equip_step: int | None = None            # step the equipment below was taken on
         self.equip_base: dict[str, list[int]] = {}
         self.steal_note: tuple[str, str] | None = None
-        self.steal_off = ""                          # why the screen can't be read, if it can't
+        self.steal_off = ""                          # why steals can't be checked (no item bag), if not
 
         # battle
         self.in_battle = False
@@ -126,7 +129,6 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
         self._enc_flag_seen: set[bool] = set()          # values that flag has shown
         self.battle_start_time = 0.0
         self.battle_field: int | None = None      # the screen the fight you're in started from
-        self.battle_by_hand = False               # the fight was put on its step with F8/F7: it teaches nothing
         self._left_multi: int | None = None       # the several-fight step the route just moved on from
         self._extra_return: int | None = None     # one more of its fights: the step to go back to after
         self.pre_battle_step = 0
@@ -134,6 +136,7 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
         self.sub = 0                    # fights already won on this step (steps with several fights)
         self._last_end_sub = False      # the last win only moved on to the step's next fight
         self.inside_done: set[int] = set()  # fights inside a step (Baku in Crash Site) already won
+        self.inside_done_at: dict[int, int] = {}   # sub-step -> game timer when it was done
         self._end_dest: int | None = None   # where the last won fight sent you (F7 undoes it)
         self._back_to_parent: int | None = None
         self.events: list[str] = []          # lines for logs/run_log.txt
@@ -151,6 +154,7 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
         self.party_seen: set[str] = set()    # everyone seen in a fight this run
         self.obtained: list[list] = []       # [game timer, item, how many, step] got this run (branches)
         self.show_next = False               # show the next step under this one (config: overlay.show_next)
+        self.speedrun = False                # speedrun mode: the prime way only, and just the notes (config: speedrun)
         self.loaded_at = -1e9                # when a save was last loaded (screens aren't learned then)
         self.step_since = 0.0                # when the current step came up
         self._now = 0.0
@@ -167,7 +171,12 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
         self.field_since = 0.0
         self.field_read_at = -1e9            # when the screen was last read (it's stale after a load)
         self.field_handled: int | None = None
-        self._pending_field_learn: tuple[int, bool] | None = (self.step, False)
+        self._left_start = False                  # left this step's start screen since it came up
+        self._auto_hold: tuple[int | None, int | None] | None = None   # (screen, lines done) at a key press
+        self.field_logged: int | None = None       # the last room written to the run log
+        # Nothing is learned from where you are when the coach starts (that's often a save in
+        # the middle of the game, not where step 1 starts); a new game teaches step 1.
+        self._pending_field_learn: tuple[int, bool] | None = None
         self._pending_screen: int | None = None
 
     # ------------------------------------------------------------------
@@ -176,7 +185,7 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
     def _load_progress(self) -> None:
         if self.progress_path and self.progress_path.exists():
             try:
-                data = json.loads(self.progress_path.read_text())
+                data = json.loads(self.progress_path.read_text(encoding="utf-8-sig"))
                 self.step = max(0, min(int(data.get("step", 0)), len(self.steps) - 1))
                 self.encounters = [int(t) for t in data.get("encounters", [])]
                 self.sub = int(data.get("sub", 0))
@@ -236,17 +245,30 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
         if self._igt_counted < IGT_TRUST or d >= 0:
             return
         if igt < IGT_NEW_GAME and last > IGT_NEW_GAME * 2:
-            saved = (self.step, list(self.encounters), dict(self.stolen), dict(self.picked))
+            saved = self._run_snapshot()
             self._reset_pending = (last, saved)
             self.new_run()                         # reset or title screen: step 1 now
         elif -d > IGT_BACK:
             self._dropped_to(igt, last)
 
+    _RUN_STATE = ("step", "sub", "groups_done", "encounters", "stolen", "picked", "obtained", "got_log",
+                  "branch_choice", "branch_at", "inside_done", "inside_done_at", "party_seen")
+
+    def _run_snapshot(self) -> dict:
+        """Everything about this run so far, to put back if a "new game" turns out to be a
+        save loaded from the title screen."""
+        return {k: copy.deepcopy(getattr(self, k)) for k in self._RUN_STATE}
+
     def _undo_reset(self, saved) -> None:
-        """It was a save being loaded after all, not a new game: back to your place."""
-        self._event(f"it was a save loaded from the title screen: back to step {saved[0] + 1}")
+        """It was a save being loaded after all, not a new game: back to your place, with
+        what you got this run (the Broadsword stolen), the ways taken and the sub-steps done."""
+        if not isinstance(saved, dict):                # (an older snapshot: step, encounters, ...)
+            saved = dict(zip(("step", "encounters", "stolen", "picked"), saved))
+        self._event(f"it was a save loaded from the title screen: back to step {saved['step'] + 1}")
         self.loaded_at = self._now
-        self.step, self.encounters, self.stolen, self.picked = saved
+        for k, v in saved.items():
+            setattr(self, k, v)
+        self._answers = {}
         self._entry_step = None
         self.resets = max(0, self.resets - 1)
         self.message = ""
@@ -258,6 +280,8 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
             return
         self._event(f"save loaded (game timer {was // 60}s -> {igt // 60}s)")
         self.loaded_at = self._now
+        if self.in_battle:
+            self._loaded_in_fight = True               # the fight that's on doesn't count as won
         # Pickups and steals made after that moment haven't happened in the loaded game.
         for t, kind, step, item in [x for x in self.got_log if x[0] > igt]:
             got = (self.picked if kind == "picked" else self.stolen).get(step, [])
@@ -270,7 +294,10 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
         for g in [g for g, t in self.branch_at.items() if t > igt]:
             self.branch_choice.pop(g, None)
             self.branch_at.pop(g, None)
-        self.inside_done = set()
+        later = {j for j, t in self.inside_done_at.items() if t > igt}
+        self.inside_done = {j for j in self.inside_done if j not in later}
+        for j in later:
+            self.inside_done_at.pop(j, None)
         before = len(self.encounters)
         self.encounters = [t for t in self.encounters if t <= igt]
         if len(self.encounters) != before:
@@ -286,6 +313,7 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
         self.picked = {}
         self.last_end = None
         self.inside_done = set()
+        self.inside_done_at = {}
         self.branch_choice = {}
         self.branch_at = {}
         self.message = "Reset: back to the start of the route"
@@ -301,9 +329,9 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
         place that route was left at (if progress is kept: config's resume_progress).
         Settings from outside the route (show the next step, why steals can't be seen) stay."""
         learned_path, party_slots, resume = self._init_args
-        show_next, steal_off = self.show_next, self.steal_off
+        show_next, steal_off, speedrun = self.show_next, self.steal_off, self.speedrun
         self.__init__(route, progress_path, learned_path, party_slots, resume)
-        self.show_next, self.steal_off = show_next, steal_off
+        self.show_next, self.steal_off, self.speedrun = show_next, steal_off, speedrun
 
     def reload_route(self, route: dict) -> None:
         """Swap in an edited route without losing your place (found by the step's identity)."""
@@ -317,7 +345,13 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
             self.step = max(0, min(old_step, len(self.steps) - 1))
         self._follow_moves(where)
         self.last_end = None
+        self.recheck_screen()
         self._save_progress()
+
+    def recheck_screen(self) -> None:
+        """Look at the screen you're on again, as if just arrived: an edit (a step's Starts on
+        changed to the room you're standing in) or a Forget can make it mean something now."""
+        self.field_handled = None
 
     def _follow_moves(self, where: dict[int, int | None]) -> None:
         """After an edit: everything kept by step number goes with its step to where it is
@@ -329,6 +363,7 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
         self.picked = {m(i): v for i, v in self.picked.items() if m(i) is not None}
         self.got_log = [(t, kind, m(i), item) for t, kind, i, item in self.got_log if m(i) is not None]
         self.inside_done = {m(i) for i in self.inside_done if m(i) is not None}
+        self.inside_done_at = {m(i): t for i, t in self.inside_done_at.items() if m(i) is not None}
 
         def group(g):
             kind, _, n = g.rpartition(" ")
@@ -364,7 +399,13 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
         old = self.step
         self._entry_step = None                        # judge the new step from how it starts
         self.step = max(0, min(index, len(self.steps) - 1))
+        self._keep_parent_ticks(old)
         self.step_since = self._now
+        if self.step != old:
+            self._left_start = False
+        # A key put you here: no sub-step opens by itself until you move on or tick something
+        # (F7 out of Mountain/Base on its own screen mustn't open it again at once).
+        self._auto_hold = (self.field_cur, None) if manual else None
         if self.step != old:
             self._event(f"step {self._label(old)} -> {self._label(self.step)}"
                         f" ({why or ('by hand' if manual else 'auto')})")
@@ -401,21 +442,43 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
             self.battle_is_boss = self.current()["type"] == "boss"
             if self.battle_is_boss and manual:
                 self.identified = True
-                self.battle_by_hand = True
 
 
     # -- the Learn key: teach what it can't work out here, without moving the route --------
     def learn(self) -> None:
-        """In a fight: this is the fight of the fight step you're on (or the next one ahead):
-        its HP and the screen it started from are learned, and it counts from now on, so
-        winning it moves on as usual. Elsewhere: the screen you're on is where the next
-        step starts (or a sub-step of this one, such as a shop), and the route moves on by
-        itself as it would on any screen it knows."""
+        """F6. In a fight: this is the fight of the fight step you're on (or the next one
+        ahead): its HP and the screen it started from are learned, and it counts from now
+        on, so winning it moves on as usual. Elsewhere: the screen you're on is where the
+        step you're on starts (a shop sub-step: this shop)."""
+        if self.in_battle:
+            self._learn_this_fight()
+        else:
+            self._learn_this_step()
+        self._save_progress()
+
+    def learn_next(self) -> None:
+        """Shift+F6: the screen you're on is where the NEXT step starts (or a sub-step of
+        this one still to come), and the route moves on by itself as on any screen it
+        knows. In a fight it's the same as F6."""
         if self.in_battle:
             self._learn_this_fight()
         else:
             self._learn_this_screen()
         self._save_progress()
+
+    def _learn_this_step(self) -> None:
+        f = self.field_cur
+        if place(f) is None:
+            self.message = "Learn: this screen can't be read"
+            return
+        s = self.current()
+        if s["type"] == "boss":
+            self.message = "Learn: a fight step: press Learn during the fight"
+            return
+        self.learned.set_field(self.step_key(s), f, self.rname)
+        self._event(f"Learn key: {self._label(self.step)} starts on {field_name(f)}")
+        self.message = f"Learned: {self._label(self.step)} starts here"
+        self.field_handled = f                         # (you're here already: nothing to jump to)
 
     def _learn_this_fight(self) -> None:
         if not self.identified and self.prev is not None:
@@ -436,7 +499,8 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
             self.message = "Learn: no fight step ahead for this fight"
             return
         if target != self.step:
-            self.step, self.step_since, self.sub = target, self._now, 0
+            self._set_step(target)
+            self.step_since, self.sub = self._now, 0
         self.battle_is_boss, self.identified, self.hold_route = True, True, False
         if self.battle_counted and self.encounters:
             self.encounters.pop()                      # it was counted as a random battle
@@ -460,15 +524,25 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
 
     def _learn_this_screen(self) -> None:
         f = self.field_cur
-        if f is None or f in NO_SCREEN or f >= MAX_SCREEN:
+        if place(f) is None:
             self.message = "Learn: this screen can't be read"
             return
-        # A walk/menu sub-step of this step still to come whose screen isn't known (a shop
-        # you're standing in), else the next step.
-        target = next((j for j in self._pending_inside(self.step)
-                       if self.steps[j]["type"] != "boss" and self._start_screen(j) is None), None)
+        # The next step in order, never one past a fight still to come. On a sub-step: the
+        # next sub-step of its step, else the step after it. On a step: a sub-step still to
+        # come whose screen isn't known (a shop you're standing in), unless a fight comes
+        # first; else the step after it.
+        here, target = self.step, None
+        if self.is_inside(here) and self.parent_of(here) is not None:
+            parent = self.parent_of(here)
+            target = next((j for j in self.inside_of(parent) if j > here and j not in self.inside_done), None)
+            here = parent
+        else:
+            for j in self._pending_inside(here):
+                if self.steps[j]["type"] == "boss" or self._start_screen(j) is None:
+                    target = j
+                    break
         if target is None:
-            target = self._next_index(self.step, skip_pending=True)
+            target = self._next_index(here, skip_pending=True)
         if target == self.step:
             self.message = "Learn: no step after this one"
             return
@@ -485,14 +559,81 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
         self._goto(index, manual=True, why=why)
 
     def next_step(self) -> None:
-        if not self.in_battle and self.is_inside(self.step):
-            self.inside_done.add(self.step)            # F8 on a fight inside a step: back to that step
-            parent = self.parent_of(self.step)
-            if parent is not None:
-                self.goto(parent, why="F8 (fight inside a step)")
+        """F8: the next step in order, sub-steps too: 2, 2.1, 2.2, 3. From a sub-step, back
+        to its step first when that step has notes between this sub-step and the next one
+        (the walk from Maliris to the Tiamat menu), as when the sub-step is done by itself."""
+        here = self.step
+        self._log_unticked("F8")
+        if self.is_inside(here):
+            self._sub_done(here)                       # this sub-step is done with
+            parent = self.parent_of(here)
+        else:
+            parent = here
+        if parent is not None:
+            sub = next((j for j in self.inside_of(parent) if j > here and j not in self.inside_done), None)
+            if here != parent and self._notes_between(parent, here, sub):
+                self.goto(parent, why="F8, back to its step")
                 self._back_to_parent = parent
                 return
-        self.goto(self._next_index(self.step, skip_pending=True), why="F8")
+            if sub is not None:
+                self.goto(sub, why="F8")
+                return
+            here = parent
+        target = self._next_index(here, skip_pending=True)
+        if target == here and here != self.step:
+            return                                     # the end of the route: stay on its last sub-step
+        self.goto(target, why="F8")
+
+    def _log_unticked(self, key: str) -> None:
+        """For the run log: the first line the coach could check that wasn't ticked when
+        `key` moved you on from a walk or menu step (what to fix in the route or the coach)."""
+        if self.prev is None or self.current()["type"] == "boss":
+            return
+        try:
+            todo = self._menu_progress(self.prev)[1]
+        except Exception:
+            return
+        if todo is not None:
+            line = check_lines(self.current())[todo].strip()
+            self._event(f"{key} on {self._label(self.step)}: \"{line}\" not ticked")
+
+    def _notes_between(self, parent: int, sub: int, nxt: int | None) -> bool:
+        """Whether step `parent` has lines (notes, pickups) between its [call] of sub-step
+        `sub` and its call of `nxt` (or its end, with no next sub-step)."""
+        from syntax import substep_call
+        lines = step_lines(self.steps[parent])
+        def at(j):
+            t = (self.steps[j].get("title") or "").strip().lower()
+            return next((k for k, l in enumerate(lines) if (substep_call(l) or "").lower() == t), None)
+        start = at(sub)
+        if start is None:
+            return False
+        end = at(nxt) if nxt is not None else len(lines)
+        if end is None or end <= start:
+            end = len(lines)
+        return any(l.strip() and not substep_call(l) for l in lines[start + 1:end])
+
+    def next_main_step(self) -> None:
+        """Shift+F8: past every sub-step to the next main step (from a sub-step too)."""
+        here = self.step
+        if self.is_inside(here) and self.parent_of(here) is not None:
+            here = self.parent_of(here)
+        target = self._next_index(here, skip_pending=True)
+        if target != here:                             # (at the end of the route: stays)
+            self.goto(target, why="Shift+F8")
+
+    def prev_main_step(self) -> None:
+        """Shift+F7: back past sub-steps to a main step: from a sub-step, the step it's in;
+        from a main step, the main step before it."""
+        here = self.step
+        if self.is_inside(here) and self.parent_of(here) is not None:
+            target = self.parent_of(here)
+        else:
+            target = here - 1
+            while target >= 0 and (self.is_inside(target) or not self.active(target)):
+                target -= 1
+        if 0 <= target != here:                        # (at the start of the route: stays)
+            self.goto(target, why="Shift+F7")
 
     def prev_step(self) -> None:
         # Undo a wrong automatic "boss done" (only the route: what it learned stays; the
@@ -572,7 +713,10 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
         return j if j >= 0 else None
 
     def inside_of(self, i: int) -> list[int]:
-        """The sub-steps of step i (the steps right after it marked as inside), on your branch."""
+        """The sub-steps of step i (the steps right after it marked as inside), on your branch.
+        A sub-step has none: the ones after it belong to the step above, not to it."""
+        if self.is_inside(i):
+            return []
         out, j = [], i + 1
         while self.is_inside(j):
             if self.active(j):
@@ -590,6 +734,56 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
         if j >= len(self.steps):
             return i if self.active(i) else len(self.steps) - 1
         return j
+
+    _TICKS = ('tick_step', 'shop_ticked', 'optimize_base', 'shop_step', 'shop_base', 'shop_peak', 'equip_step', 'equip_base', 'menu_opened_on')
+
+    def _set_step(self, new: int) -> None:
+        """Onto step `new` without the rest of _goto (a fight recognised, the Learn key)."""
+        old, self.step = self.step, new
+        self._keep_parent_ticks(old)
+
+    def _keep_parent_ticks(self, old: int) -> None:
+        """Into a sub-step and back: what the step above had ticked (an Optimize, buys,
+        the menu used) is put aside and comes back with it, instead of being counted
+        again from what you have when you come back."""
+        new = self.step
+        if new == old:
+            return
+        if self.is_inside(new) and self.parent_of(new) == old and not self.is_inside(old):
+            self._parent_ticks = (old, {k: copy.deepcopy(getattr(self, k)) for k in self._TICKS})
+        elif self._parent_ticks and new == self._parent_ticks[0]:
+            for k, v in self._parent_ticks[1].items():
+                setattr(self, k, v)
+            self._parent_ticks = None
+        elif not (self.is_inside(new) and self._parent_ticks and self.parent_of(new) == self._parent_ticks[0]):
+            self._parent_ticks = None                  # (another sub-step of it keeps them)
+
+    def _sub_done(self, j: int) -> None:
+        """Sub-step j is done, and so are the other versions of it in its step (the same
+        name, other conditions: Dali Shop, and Dali Shop when you got a Leather Wrist). One
+        of them is done, not each: buying the Leather Wrist mustn't bring up the other."""
+        when = self._igt_last or 0
+        for k in [j] + self._versions(j):
+            if k not in self.inside_done:
+                self.inside_done_at[k] = when          # (a save from before this undoes it)
+            self.inside_done.add(k)
+
+    def _versions(self, j: int) -> list[int]:
+        """Sub-step j and the other sub-steps of its step with the same name (versions of it
+        with other conditions), in route order. [] for a step that isn't a sub-step."""
+        if not self.is_inside(j):
+            return []
+        name = (self.steps[j].get("title") or "").strip().lower()
+        k = j - 1
+        while k >= 0 and self.is_inside(k):
+            k -= 1
+        k += 1
+        out = []
+        while self.is_inside(k):
+            if (self.steps[k].get("title") or "").strip().lower() == name:
+                out.append(k)
+            k += 1
+        return out
 
     def _pending_inside(self, i: int) -> list[int]:
         return [j for j in self.inside_of(i) if j not in self.inside_done]
@@ -711,7 +905,7 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
 def load_route(path: Path) -> dict:
     """A route file (fight steps written like other steps, or the older separate cards)."""
     from routes import expand
-    route = expand(json.loads(path.read_text(encoding="utf-8")))
+    route = expand(json.loads(path.read_text(encoding="utf-8-sig")))
     route["name"] = path.stem          # the route's identity: its file (progress, learned screens, run log)
     if not route.get("steps"):
         raise ValueError("the route has no steps: add one in the editor")

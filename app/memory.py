@@ -295,6 +295,11 @@ class Addresses:
     gil: int | None = None
     inventory_entries: int = 256
     inventory_id_first: bool = True
+    # Key items: a bit each, on once you have it, in a block just past the item bag
+    # (inventory + 0x200). key_item_ids: each one's bits (screen.KEY_ITEM_IDS for the US
+    # release; "finder.py keyitems" reads them from the game for others).
+    key_items_at: int | None = None
+    key_item_ids: dict[str, list[int]] = field(default_factory=dict)
 
     def slot(self, k: int, off: int) -> int:
         return self.battle_base + k * self.slot_stride + off
@@ -361,6 +366,15 @@ class Addresses:
             a.inventory_entries = int(addr.get("inventory_entries", 256))
             a.inventory_id_first = bool(addr.get("inventory_id_first", True))
         a.ability_bits = {k: (int(v[0]), int(v[1])) for k, v in (addr.get("ability_bits") or {}).items()}
+        from items import KEY_ITEM_IDS, US_INVENTORY
+        if addr.get("key_items_at"):
+            a.key_items_at = h(addr["key_items_at"])
+        elif a.inventory is not None:
+            a.key_items_at = a.inventory + 0x200        # just past the bag's 256 entries
+        if a.key_items_at is not None:
+            a.key_item_ids = {k: list(v) for k, v in KEY_ITEM_IDS.items()} if a.inventory == US_INVENTORY else {}
+            a.key_item_ids.update({k: [int(x) for x in (v if isinstance(v, list) else [v])]
+                                   for k, v in (addr.get("key_item_ids") or {}).items()})
         a.ability_bits = fill_abilities(a.ability_bits)
         for key in ("hp_width", "atb_width", "field_id_width", "battle_sig_len"):
             if key in addr:
@@ -395,6 +409,8 @@ class GameState:
     gil: int | None = None
     config: dict[str, int] = field(default_factory=dict)   # setting -> masked byte now
     config_values: dict[str, dict[str, int]] = field(default_factory=dict)   # setting -> value name -> byte
+    key_items: set | None = None          # key items you have; None = not set up
+    key_known: frozenset = frozenset()    # key items the coach can see
 
 
 def add_guest(chars: dict) -> None:
@@ -454,7 +470,24 @@ def read_state(ram: RamSource, a: Addresses) -> GameState:
         config_values={k: v for k, (_, _, v) in a.config.items()},
         rows={n: ("back" if (ram.u8(r["exp"] + a.row_off) >> a.row_bit & 1) == a.row_back else "front")
               for n, r in a.chars.items() if "exp" in r} if a.row_off is not None else {},
+        **read_key_items(ram, a),
     )
+
+
+def key_item_places(a: Addresses) -> dict[str, list[tuple[int, int]]]:
+    """Each key item the coach can read: its (address, bit)s."""
+    if a.key_items_at is None:
+        return {}
+    return {name: [(a.key_items_at + (n >> 3), n & 7) for n in bits] for name, bits in a.key_item_ids.items()}
+
+
+def read_key_items(ram: RamSource, a: Addresses) -> dict:
+    """{"key_items": what you have, "key_known": what can be read}; nothing if not set up."""
+    places = key_item_places(a)
+    if not places:
+        return {}
+    have = {n for n, spots in places.items() if any(ram.u8(addr) >> bit & 1 for addr, bit in spots)}
+    return {"key_items": have, "key_known": frozenset(places)}
 
 
 def fill_abilities(known: dict[str, tuple[int, int]]) -> dict[str, tuple[int, int]]:
@@ -462,7 +495,7 @@ def fill_abilities(known: dict[str, tuple[int, int]]) -> dict[str, tuple[int, in
     not found directly is placed from the nearest found one before it in that order (or
     after it, for the first few), so one gap or extra in the list only throws off the
     abilities between two found ones, and finding more fixes them."""
-    from screen import ABILITIES
+    from items import ABILITIES
     from ability_data import SUPPORT_BITS_OFFSET
     anchors = sorted((ABILITIES.index(n), off * 8 + bit) for n, (off, bit) in known.items() if n in ABILITIES)
     if not anchors:

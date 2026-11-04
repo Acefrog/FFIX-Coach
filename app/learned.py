@@ -26,7 +26,7 @@ class Learned:
         self.data = {"battle_fp": None, "fp_unusable": False, "formations": {}, "fields": {}}
         if path and path.exists():
             try:
-                self.data.update(json.loads(path.read_text()))
+                self.data.update(json.loads(path.read_text(encoding="utf-8-sig")))
                 self._mtime = path.stat().st_mtime
             except (ValueError, OSError):
                 pass
@@ -69,7 +69,7 @@ class Learned:
             if m is not None and m != self._mtime:
                 # Someone else (the editor) wrote it since: start from theirs, add ours.
                 try:
-                    disk = json.loads(self.path.read_text())
+                    disk = json.loads(self.path.read_text(encoding="utf-8-sig"))
                 except ValueError:
                     disk = None
                 if isinstance(disk, dict) and disk.get("formation_version") == FORMATION_VERSION:
@@ -100,7 +100,7 @@ class Learned:
             m = self.path.stat().st_mtime
             if m == self._mtime:
                 return False
-            data = json.loads(self.path.read_text())
+            data = json.loads(self.path.read_text(encoding="utf-8-sig"))
         except (OSError, ValueError):
             return False
         self._mtime = m

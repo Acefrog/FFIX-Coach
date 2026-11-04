@@ -1,6 +1,6 @@
 """Memory setup: every finder in one window.
 
-    python app\\setup_finder.py      (or "Memory setup" in FFIX Coach.pyw)
+    python app\\setup_finder.py      (or the Memory setup page of FFIX Coach.pyw)
 
 config.json already holds where things are in FFIX's memory for the US (NTSC-U) release.
 On another release, or if something never ticks, pick what to find on the left and
@@ -43,6 +43,8 @@ TASKS = [
      lambda a: a.get("row")),
     ("items", "Item bag", "In a shop: buy or sell one thing, type its name", False, lambda a: a.get("inventory")),
     ("gil", "Gil", "Menu or shop: type your gil, spend or get some, type it again", False, lambda a: a.get("gil")),
+    ("keyitems", "Key items", "Anywhere in the game: read from its own list (US: already built in)",
+     False, lambda a: len(a.get("key_item_ids") or {}) or (a.get("inventory") == "0x08B7C4" and "built in")),
     ("config", "Config menu settings", "FF9's Config menu open: switch each setting when asked", False,
      lambda a: len(a.get("config") or {})),
     ("zidane", "Zidane's party position", "Only if he isn't at the top of the party in fights", False,
@@ -103,7 +105,7 @@ class Runner:
 
 def config_addresses() -> dict:
     try:
-        return json.loads(CONFIG.read_text(encoding="utf-8")).get("addresses", {})
+        return json.loads(CONFIG.read_text(encoding="utf-8-sig")).get("addresses", {})
     except (OSError, ValueError):
         return {}
 
@@ -115,19 +117,26 @@ def status_text(task, addrs: dict) -> str:
     v = check(addrs)
     if not v:
         return "not set"
-    if isinstance(v, int) and not isinstance(v, bool) and task[0] in ("fights", "stats", "menu", "config", "ability"):
+    if v == "built in":
+        return "✓ built in"
+    if isinstance(v, int) and not isinstance(v, bool) and task[0] in ("fights", "stats", "menu", "config", "ability", "keyitems"):
         return f"✓ set ({v})"
     return "✓ set"
 
 
-def run() -> int:
+def run(host=None):
+    """Memory setup in its own window; or, given `host` (a frame of the FFIX Coach app), built
+    into it (then it returns the Runner: the app runs the window)."""
     import tkinter as tk
     from tkinter import ttk
 
-    root = tk.Tk()
-    root.title("FFIX Coach · Memory setup")
-    root.geometry("1050x640")
-    root.minsize(860, 480)
+    if host is None:
+        root = tk.Tk()
+        root.title("FFIX Coach · Memory setup")
+        root.geometry("1050x640")
+        root.minsize(860, 480)
+    else:
+        root = host                     # (only packs into it and runs timers on it)
     runner = Runner()
 
     top = ttk.Frame(root, padding=(12, 10, 12, 4))
@@ -275,7 +284,7 @@ def run() -> int:
     def check_game():
         if not runner.busy():
             try:
-                cfg = json.loads(CONFIG.read_text(encoding="utf-8"))
+                cfg = json.loads(CONFIG.read_text(encoding="utf-8-sig"))
                 finder.open_ram(cfg)
                 game.configure(text="● DuckStation found", foreground="#2e7d32")
             except Exception:
@@ -286,6 +295,8 @@ def run() -> int:
     on_pick()
     poll()
     check_game()
+    if host is not None:
+        return runner
     root.mainloop()
     return 0
 

@@ -22,7 +22,7 @@ from paths import CONFIG, LEARNED, STOP_FILE, log
 
 
 def load_config() -> dict:
-    return json.loads(CONFIG.read_text(encoding="utf-8"))
+    return json.loads(CONFIG.read_text(encoding="utf-8-sig"))
 
 
 # ----------------------------------------------------------------------
@@ -125,12 +125,15 @@ def key_actions(coach: Coach, cfg: dict):
         keys.get("prev_step", "F7"): coach.prev_step,
         keys.get("next_step", "F8"): coach.next_step,
         keys.get("learn", "F6"): coach.learn,
+        keys.get("learn_next", "Shift+F6"): coach.learn_next,
+        keys.get("next_main_step", "Shift+F8"): coach.next_main_step,
+        keys.get("prev_main_step", "Shift+F7"): coach.prev_main_step,
     }
     return actions, keys.get("toggle_overlay", "F9"), keys.get("quit", "F10")
 
 
 class Runner:
-    """One poll of the game: the Stop button and keys, the screen reader, edits to the
+    """One poll of the game: the Stop button and keys, edits to the
     route, the coach itself, the logs and the panel.
 
     Everything it uses is handed in (the game's memory, the hotkeys, where the stop
@@ -138,11 +141,11 @@ class Runner:
     real files. main() builds one and calls tick() every poll."""
 
     def __init__(self, coach: Coach, ram, addrs: Addresses, cfg: dict, route_name: str, *,
-                 sim: Simulator | None = None, watcher=None, hotkeys=None, debug: bool = False,
+                 sim: Simulator | None = None, hotkeys=None, debug: bool = False,
                  simulate: bool = False, logs=log, stop_file: Path = STOP_FILE, config_path: Path = CONFIG,
                  watch_files: bool | None = None):
         self.coach, self.ram, self.addrs, self.cfg = coach, ram, addrs, cfg
-        self.sim, self.watcher, self.hotkeys = sim, watcher, hotkeys
+        self.sim, self.hotkeys = sim, hotkeys
         self.debug, self.simulate = debug, simulate
         self.logs, self.stop_file, self.config_path = logs, stop_file, config_path
         self.watch_files = sim is None if watch_files is None else watch_files   # route and config edits
@@ -170,7 +173,7 @@ class Runner:
     # -- the poll ---------------------------------------------------------------
     def tick(self, render) -> bool:
         """Read the game once and update the panel. False when it's time to quit."""
-        coach, watcher = self.coach, self.watcher
+        coach = self.coach
         if self.stop_file.exists():              # "Stop coach" in the launcher (game there or not)
             try:
                 self.stop_file.unlink()
@@ -197,17 +200,6 @@ class Runner:
             return True                          # keep waiting (F10 quits)
         if not self.handle_keys():
             return False
-        if watcher and self.debug and time.monotonic() - self.last_debug > 1 and watcher.active.is_set():
-            print(f"screen text: {watcher.last_text!r}" + (f"  error: {watcher.last_error}" if watcher.last_error else ""))
-        if watcher:
-            for kind, item in watcher.poll():
-                if kind == "got":
-                    coach.pickup_event(item)
-                    print(f"Pickup seen on screen: {item}")
-                    continue
-                coach.steal_event(kind, item)
-                if kind == "stole":
-                    print(f"Steal seen on screen: {item}")
         if self.watch_files:
             self.check_route_file()
         view = coach.update(state)
@@ -226,13 +218,6 @@ class Runner:
             self.last_msg = coach.message
             if coach.message:
                 print("coach: " + coach.message)
-        if watcher:
-            if coach.wants_steal_check():
-                watcher.set_active(True, full=False)       # battle message at the top
-            elif coach.wants_pickup_check():
-                watcher.set_active(True, full=True)        # "Received ..." can show anywhere
-            else:
-                watcher.set_active(False)
         if view != self.last_view:
             render(view)
             self.last_view = view
@@ -285,8 +270,6 @@ class Runner:
         old, self.ram = self.ram, new
         if hasattr(old, "close"):
             old.close()                          # the old process handle, no longer used
-        if self.watcher is not None:
-            self.watcher.pid = new.pid
         if self.overlay is not None:
             self.overlay.pid = new.pid
         print(f"Found the game again (pid {new.pid}).")
@@ -303,13 +286,15 @@ class Runner:
             m = self.config_path.stat().st_mtime
             if m != self.cfg_mtime:              # e.g. "Show the next step" ticked in the launcher
                 self.cfg_mtime = m
-                cfg = json.loads(self.config_path.read_text(encoding="utf-8"))
+                cfg = json.loads(self.config_path.read_text(encoding="utf-8-sig"))
                 coach.show_next = bool(cfg.get("overlay", {}).get("show_next", False))
+                coach.speedrun = bool(cfg.get("speedrun", False))
                 self.last_view = None            # draw again
         except (OSError, ValueError):
             pass
         if coach.learned.refresh():
             self.log_run(["learned.json changed (the editor forgot something): reloaded it"])
+            coach.recheck_screen()
         name = routes.active()
         if name and name != self.route_name and routes.path(name).exists():
             try:
@@ -377,7 +362,7 @@ class Runner:
             return
         addrs = self.addrs
         try:
-            from screen import ITEMS
+            from items import ITEMS
             with self.logs("bag_log.txt").open("a", encoding="utf-8") as f:
                 if self.last_bag is None:
                     raw = self.ram.read(max(0, addrs.inventory - 0x20), 0x240)
@@ -395,7 +380,7 @@ class Runner:
             return
         addrs = self.addrs
         try:
-            from screen import ITEMS
+            from items import ITEMS
             def names(e):
                 return " / ".join(ITEMS[i] if 0 < i < len(ITEMS) else ("-" if i in (0, 255) else str(i)) for i in e)
             with self.logs("equip_log.txt").open("a", encoding="utf-8") as f:
@@ -418,26 +403,20 @@ class Runner:
             pass
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--debug", action="store_true")
-    ap.add_argument("--simulate", action="store_true")
-    ap.add_argument("--console", action="store_true")
-    ap.add_argument("--step", type=int, help="start at this step number (1-based)")
-    ap.add_argument("--no-ocr", action="store_true", help="don't read steal messages off the screen")
-    ap.add_argument("--ocr-test", action="store_true",
-                    help="print what the screen reader sees at the top of the game picture, then quit")
-    args = ap.parse_args()
+class CoachError(Exception):
+    """The coach can't start (no route, DuckStation not running): the message says why."""
 
+
+def prepare(simulate: bool = False, debug: bool = False, step: int | None = None):
+    """Everything the coach needs, ready to run: (runner, cfg, pid). Raises CoachError."""
     cfg = load_config()
     addrs = Addresses.from_config(cfg)
     route_name = routes.active()
     if not route_name:
-        print("No route found: open the editor and make one.")
-        return 1
+        raise CoachError("No route found: open the editor and make one.")
     route = load_route(routes.path(route_name))
     print(f"Route: {route_name}")
-    if args.simulate:
+    if simulate:
         for st in route["steps"]:                   # the simulator's fights all start from one screen
             if st["type"] == "boss":
                 st.setdefault("screen", Simulator.BOSS_SCREEN)
@@ -449,10 +428,11 @@ def main() -> int:
                       resume=bool(cfg.get("resume_progress", False)))
 
     coach.show_next = bool(cfg.get("overlay", {}).get("show_next", False))
+    coach.speedrun = bool(cfg.get("speedrun", False))
 
     sim = None
     pid = 0
-    if args.simulate:
+    if simulate:
         ram = FakeRam()
         def next_fight():
             """The typed HP of the next fight step on the route (from where the coach is)."""
@@ -470,61 +450,17 @@ def main() -> int:
             ram = DuckStationRam(cfg.get("process_name", "duckstation"),
                                  int(base, 16) if isinstance(base, str) else base)
         except MemoryError_ as e:
-            print(f"Can't read DuckStation: {e}")
-            print("Try: python app\\main.py --simulate   to see the overlay without the game.")
-            return 1
+            raise CoachError(f"Can't read DuckStation: {e} Start the game in DuckStation, then Start coach.")
         pid = ram.pid
         print(f"Attached to {ram.exe} (pid {ram.pid}), PS1 RAM at 0x{ram.ram_base:X}")
 
-    if args.step:
-        coach.goto(args.step - 1)
+    if step:
+        coach.goto(step - 1)
 
-    watcher = None
-    if not args.simulate and not args.no_ocr:
-        from screen import StealWatcher, parse_message
-        watcher = StealWatcher(pid, cfg.get("overlay", {}))
-        watcher.log_path = log("screen_log.txt")
-        watcher._log("", "")
-        try:
-            with watcher.log_path.open("a", encoding="utf-8") as f:
-                f.write(f"{time.strftime('%H:%M:%S')} coach started (reads DuckStation's own window)\n")
-        except OSError:
-            pass
-        if args.ocr_test:
-            if not watcher.ocr.available:
-                print(f"Screen reading is off: {watcher.ocr.problem}")
-                return 1
-            from screen import save_bmp
-            watcher.full = True       # the whole picture: battle messages and "Received ..." alike
-            print("Reading the game picture every second. Steal in a fight, or open a chest, to test. "
-                  "Ctrl+C to stop.")
-            saved = False
-            try:
-                while True:
-                    r, pixels = watcher.grab()
-                    if r is None:
-                        print("Can't find DuckStation's window.")
-                    elif not pixels:
-                        print(f"Screen capture failed at {r}.")
-                    else:
-                        if not saved:
-                            save_bmp(log("ocr_capture.bmp"), r[2], r[3], pixels)
-                            print(f"Capturing {r[2]}x{r[3]} at ({r[0]}, {r[1]}). "
-                                  f"Saved what it sees to ocr_capture.bmp: open it to check.")
-                            saved = True
-                        try:
-                            text = watcher.ocr.read(r[2], r[3], pixels)
-                            print(repr(text), "->", parse_message(text))
-                        except Exception as e:
-                            print(f"Text reading failed: {type(e).__name__}: {e}")
-                    time.sleep(1)
-            except KeyboardInterrupt:
-                return 0
-        if watcher.ocr.available:
-            print("Steal check: reading battle messages off the screen.")
-        else:
-            print(f"Steal check is off ({watcher.ocr.problem}).")
-            coach.steal_off = f"Steal check off: {watcher.ocr.problem}"
+    if addrs.inventory is None and not simulate:
+        # Steals and pickups are read from the item bag: without it they can't tick.
+        coach.steal_off = "Steal check off: find the Item bag in Memory setup"
+        print("The item bag isn't found yet: steals and pickups can't tick (Memory setup > Item bag).")
 
     actions, toggle_key, quit_key = key_actions(coach, cfg)
     hotkeys = None
@@ -534,25 +470,110 @@ def main() -> int:
         if hotkeys.failed:
             print(f"These hotkeys are taken by another app: {', '.join(hotkeys.failed)}. "
                   "Change them in config.json.")
-        k = list(actions)
+        k = {fn.__name__: key for key, fn in actions.items() if hasattr(fn, '__name__')}
         print(f"Runs on its own. Keys only to correct it: "
-              f"{k[0]} / {k[1]} = previous / next step  ·  "
-              f"{k[2]} = learn (this fight / where the next step starts; the route carries on)  ·  "
+              f"{k['prev_step']} / {k['next_step']} = previous / next step  ·  "
+              f"{k['prev_main_step']} / {k['next_main_step']} = previous / next main step (past sub-steps)  ·  "
+              f"{k['learn']} = learn (this fight / where this step starts)  ·  "
+              f"{k['learn_next']} = learn where the next step starts  ·  "
               f"{toggle_key} = hide/show  ·  {quit_key} = quit")
 
-    poll_ms = int(cfg.get("poll_ms", 100))
-    runner = Runner(coach, ram, addrs, cfg, route_name, sim=sim, watcher=watcher, hotkeys=hotkeys,
-                    debug=args.debug, simulate=args.simulate)
-    tick = runner.tick
-
+    runner = Runner(coach, ram, addrs, cfg, route_name, sim=sim, hotkeys=hotkeys,
+                    debug=debug, simulate=simulate)
     try:
         STOP_FILE.unlink()                             # a stop asked for before this start
     except OSError:
         pass
+    return runner, cfg, pid
+
+
+class CoachSession:
+    """The coach running inside the app: its panel over the game is a window of the app, and
+    it's polled from the app's own loop. start() / stop() as often as you like."""
+
+    def __init__(self, master, on_stop=None):
+        self.master, self.on_stop = master, on_stop
+        self.runner = self.overlay = None
+        self._job = None
+
+    @property
+    def running(self) -> bool:
+        return self.runner is not None
+
+    def start(self, simulate: bool = False) -> None:
+        """Start it. Raises CoachError (with what to do) if it can't."""
+        if self.running:
+            return
+        from overlay import Overlay
+        runner, cfg, pid = prepare(simulate=simulate)
+        self.runner = runner
+        self.poll_ms = int(cfg.get("poll_ms", 100))
+        self.follow_every = max(1, 1000 // self.poll_ms)
+        self.ticks = self.errors = 0
+        self.overlay = runner.overlay = Overlay(cfg.get("overlay", {}), pid, master=self.master)
+        self._job = self.master.after(0, self._loop)
+
+    def _loop(self) -> None:
+        self._job = None
+        if self.runner is None:
+            return
+        try:
+            alive = self.runner.tick(self.overlay.render)
+        except Exception:                              # one bad update mustn't freeze the panel and its keys
+            import traceback
+            self.errors += 1
+            if self.errors <= 20:
+                traceback.print_exc()
+            alive = True
+        if not alive:                                  # F10, or Stop
+            self.stop()
+            return
+        self.ticks += 1
+        if self.ticks % self.follow_every == 0:
+            self.overlay.follow()
+        self._job = self.master.after(self.poll_ms, self._loop)
+
+    def stop(self) -> None:
+        if self._job is not None:
+            self.master.after_cancel(self._job)
+            self._job = None
+        runner, self.runner = self.runner, None
+        if runner is not None and runner.hotkeys is not None:
+            runner.hotkeys.close()
+        if self.overlay is not None:
+            try:
+                self.overlay.root.destroy()
+            except Exception:
+                pass
+            self.overlay = None
+        if runner is not None:
+            print("Coach stopped.")
+            if self.on_stop:
+                self.on_stop()
+
+    @property
+    def coach(self):
+        return self.runner.coach if self.runner else None
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--debug", action="store_true")
+    ap.add_argument("--simulate", action="store_true")
+    ap.add_argument("--console", action="store_true")
+    ap.add_argument("--step", type=int, help="start at this step number (1-based)")
+    args = ap.parse_args()
+    try:
+        runner, cfg, pid = prepare(args.simulate, args.debug, args.step)
+    except CoachError as e:
+        print(e)
+        return 1
+    poll_ms = int(cfg.get("poll_ms", 100))
+    sim = runner.sim
 
     if args.console:
         try:
-            while tick(console_print):
+            while runner.tick(console_print):
                 time.sleep(poll_ms / 1000)
                 if sim and sim.t > 10 * Simulator.CYCLE * 2:
                     break
@@ -560,33 +581,23 @@ def main() -> int:
             pass
         return 0
 
-    from overlay import Overlay, make_dpi_aware
+    import tkinter as tk
+    from overlay import make_dpi_aware
     make_dpi_aware()
-    overlay = runner.overlay = Overlay(cfg.get("overlay", {}), pid)
-    follow_every = max(1, 1000 // poll_ms)   # re-check DuckStation's window about once a second
-    ticks = [0]
-
-    errors = [0]
-
-    def loop():
-        try:
-            alive = tick(overlay.render)
-        except Exception:                              # one bad update mustn't freeze the panel and its keys
-            import traceback
-            errors[0] += 1
-            if errors[0] <= 20:
-                traceback.print_exc()
-            alive = True
-        if alive:
-            ticks[0] += 1
-            if ticks[0] % follow_every == 0:
-                overlay.follow()
-            overlay.after(poll_ms, loop)
-        else:
-            overlay.root.destroy()
-
-    overlay.after(0, loop)
-    overlay.run()
+    root = tk.Tk()
+    root.withdraw()                                    # (on its own: just the panel)
+    session = CoachSession(root, on_stop=root.destroy)
+    session.runner = None
+    try:
+        from overlay import Overlay
+        session.runner = runner
+        session.poll_ms, session.follow_every = poll_ms, max(1, 1000 // poll_ms)
+        session.ticks = session.errors = 0
+        session.overlay = runner.overlay = Overlay(cfg.get("overlay", {}), pid, master=root)
+        root.after(0, session._loop)
+        root.mainloop()
+    finally:
+        session.stop()
     return 0
 
 

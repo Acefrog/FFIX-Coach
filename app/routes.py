@@ -16,7 +16,7 @@ from paths import CONFIG, PROGRESS, ROOT, ROUTES, write_atomic
 
 def _config() -> dict:
     try:
-        return json.loads(CONFIG.read_text(encoding="utf-8"))
+        return json.loads(CONFIG.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
         return {}
 
@@ -35,7 +35,7 @@ def migrate() -> None:
     if any(ROUTES.glob("*.json")) or not old.exists():
         return
     try:
-        name = safe_name(json.loads(old.read_text(encoding="utf-8")).get("name") or "My route")
+        name = safe_name(json.loads(old.read_text(encoding="utf-8-sig")).get("name") or "My route")
     except ValueError:
         name = "My route"
     shutil.copyfile(old, ROUTES / f"{name}.json")
@@ -90,7 +90,7 @@ def create(name: str, copy_from: str | None = None) -> str:
     while path(name).exists():
         name, k = f"{base} ({k})", k + 1
     if copy_from and path(copy_from).exists():
-        data = json.loads(path(copy_from).read_text(encoding="utf-8"))
+        data = json.loads(path(copy_from).read_text(encoding="utf-8-sig"))
         data["name"] = name
     else:
         data = blank_route(name)
@@ -104,7 +104,7 @@ def rename(old: str, new: str) -> str:
         return old
     if path(new).exists():
         raise ValueError(f"There's already a route called {new}.")
-    data = json.loads(path(old).read_text(encoding="utf-8"))
+    data = json.loads(path(old).read_text(encoding="utf-8-sig"))
     data["name"] = new
     path(new).write_text(json.dumps(data, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     path(old).unlink()

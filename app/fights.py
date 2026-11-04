@@ -115,11 +115,19 @@ class FightsMixin:
         return bool(live & set(typed))
 
     def _boss_steps_ahead(self, start: int, count: int):
-        """Fight steps from `start` to `count` steps ahead, on your branch."""
+        """Fight steps from `start` to `count` steps ahead, on your branch. Sub-steps already
+        done don't count towards the `count` (Pandemonium's Garland is its 9th sub-step)."""
         i = start if self.active(start) else self._step_by(start, 1)
-        for _ in range(count + 1):
-            if self.steps[i]["type"] == "boss" and i not in self.inside_done and self.active(i):
-                yield i
+        left = count + 1
+        for _ in range(len(self.steps)):
+            if left <= 0:
+                break
+            if i in self.inside_done:
+                pass                                   # done: passed over, not counted
+            else:
+                left -= 1
+                if self.steps[i]["type"] == "boss" and self.active(i):
+                    yield i
             j = self._step_by(i, 1)
             if j == i:
                 break
@@ -163,7 +171,8 @@ class FightsMixin:
         """The fight step ahead with these enemies' HP that starts from this screen. On a step
         with several fights you're already part-way through, its next ones go by HP alone:
         they can start on other screens (each one's is learned as it's won)."""
-        for i in self._boss_steps_ahead(self.step, LOOKAHEAD_STEPS):
+        ahead = list(self._boss_steps_ahead(self.step, LOOKAHEAD_STEPS))
+        for i in ahead:
             if not self._hp_known(i, form):
                 if self._screen_says(i) and self._hit_before_read(i):
                     return i
@@ -172,7 +181,22 @@ class FightsMixin:
                 return i
             if self._fights(i) > 1 and self._part_way(i):
                 return i
+        if not self.battle_random_possible:
+            # Its typed HP, where no random battle can happen: it's that fight, even from
+            # another screen than the one set for it (Black Waltz 3 from the Bridge). Only
+            # once no fight ahead matched by its screen too, and never by an HP too big to
+            # read (65535 could be any big boss: Gizamaluke isn't Black Mages).
+            for i in ahead:
+                if self._hp_typed_match(i, form):
+                    return i
         return None
+
+    def _hp_typed_match(self, i: int, form: list[int]) -> bool:
+        """An enemy here has an HP typed for fight step i (not the 65535 an HP too big to
+        read shows as)."""
+        typed = set(self.bosses.get(self.steps[i]["boss"], {}).get("hp") or [])
+        loaded = [h for h in self.battle_start_hp if h > 0]
+        return any(hp_candidates(h) & typed for h in set(form) | set(loaded) if h != CAPPED_HP)
 
     def _hit_before_read(self, i: int) -> bool:
         """An enemy already below fight step i's typed HP when it was first read: hit before
@@ -281,7 +305,6 @@ class FightsMixin:
         # The last screen you were on. Not one read before a save was loaded or the game
         # reset (Masked Man "from" Hill of Despair): then it isn't known.
         self.battle_field = self.field_cur if self.field_read_at >= self.loaded_at else None
-        self.battle_by_hand = False                     # put on its step with F8/F7
         self._extra_return = None
         # Enemy memory can still hold the last fight's numbers for a moment after a new
         # fight starts (Plant Brain's 10,916 showed up as Plant Spiders and Black Waltz 1).
@@ -312,6 +335,7 @@ class FightsMixin:
         self.steal_note = None
         self.pre_battle_step = self.step
         self.battle_is_boss = False
+        self._loaded_in_fight = False                  # a save loaded before this fight ended
 
     def _identify(self, state: GameState, now: float) -> None:
         """Decide which fight this is, once we know which enemy slots are real."""
@@ -327,7 +351,7 @@ class FightsMixin:
                     self.sub -= 1                      # it wasn't over: same fight, not the next
                     self._ungroup()
                 self._last_end_sub = False
-                self.step = end_step
+                self._set_step(end_step)
                 self.battle_is_boss = True
                 self.message = "Same fight: back to its card"
                 self.script_slots = self._find_script_slots()
@@ -340,7 +364,7 @@ class FightsMixin:
         if jump is not None:
             if jump != self.step:
                 self.message = f"Recognised: {self.bosses[self.steps[jump]['boss']]['name']}"
-            self.step = jump
+            self._set_step(jump)
             self.battle_is_boss = True
             what = f"recognised as {self._label(jump)} (by HP and screen)"
         elif (extra is not None and extra != self.step and self._hp_known(extra, form)
@@ -348,7 +372,7 @@ class FightsMixin:
             # One more of the several fights just done (this route has more of them than
             # the step says): it's that fight, and the route carries on from here after.
             self._extra_return = self.step
-            self.step = extra
+            self._set_step(extra)
             self.battle_is_boss = True
             self.message = f"One more {self.bosses[self.steps[extra]['boss']]['name']} fight"
             what = f"one more fight of {self._label(extra)}"
@@ -376,7 +400,7 @@ class FightsMixin:
         if jump is None or (jump == self.step and self.battle_is_boss):
             return
         self._event(f"fight now HP {form}: recognised as {self._label(jump)} (by HP and screen)")
-        self.step = jump
+        self._set_step(jump)
         self.battle_is_boss = True
         if self.battle_counted and self.encounters:
             self.encounters.pop()                      # it was counted as a random battle
@@ -472,13 +496,14 @@ class FightsMixin:
 
     def _finish_boss(self, now: float) -> None:
         b = self._lkey()
-        if not self.battle_by_hand:                    # (a fight put on its step with F8/F7 teaches nothing)
-            self._learn_battle_screen(b)
+        # (Winning teaches nothing: a fight's HP and room are only ever taught with the
+        # Learn key during it, or set in the editor.)
         if self._extra_return is not None:
             # One more of a step's fights after it was done: back to where the route was.
             back, self._extra_return = self._extra_return, None
             self._event(f"fight won: {self._label(self.step)} (one more than it says)")
-            self.step, self.step_since = back, now
+            self._set_step(back)
+            self.step_since = now
             self._save_progress()
             self.message = "Fight done: back to this step"
             return
@@ -519,8 +544,13 @@ class FightsMixin:
             return
         if self.is_inside(self.step) and self.parent_of(self.step) is not None:
             # A fight in the middle of a step: back to that step to carry on with it.
-            self.inside_done.add(self.step)
             parent = self.parent_of(self.step)
+            # Fights happen in order: the sub-steps written before this one are behind you
+            # now (Black Mages once Gizamaluke is won, even if a savestate undid it).
+            for k in range(parent + 1, self.step):
+                if self.is_inside(k) and k not in self.inside_done:
+                    self._sub_done(k)
+            self._sub_done(self.step)
             self._goto(parent, manual=False, why="fight won, back to its step")
             self._end_dest = parent
             self._back_to_parent = parent
@@ -553,10 +583,17 @@ class FightsMixin:
                 and self.learned.battle_fp is None and not self.learned.data.get("fp_unusable"):
             # A fight that clearly happened: its battle-code bytes are a safe signal to learn.
             self.learned.set_battle_fp(self._fight_sig)
-        if was_boss:
+        if was_boss and getattr(self, "_loaded_in_fight", False):
+            # A save was loaded in the middle of it: the fight just went away, it wasn't won.
+            self._event(f"a save was loaded during {self._label(self.step)}: not a win")
+            if self.pre_battle_step is not None:
+                self._set_step(self.pre_battle_step)
+        elif was_boss:
             self._finish_boss(now)
+        self._loaded_in_fight = False
         if self._extra_return is not None:             # (it ended without a win)
-            self.step, self._extra_return = self._extra_return, None
+            back, self._extra_return = self._extra_return, None
+            self._set_step(back)
         self.battle_start_hp = []
         self.battle_cleared = False
 

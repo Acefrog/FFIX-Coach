@@ -178,7 +178,7 @@ def known_formations(key: str) -> list[list[int]]:
 
 def custom() -> list[dict]:
     try:
-        data = json.loads(CUSTOM.read_text(encoding="utf-8"))
+        data = json.loads(CUSTOM.read_text(encoding="utf-8-sig"))
         return [f for f in data if isinstance(f, dict) and f.get("name")]
     except (OSError, ValueError):
         return []

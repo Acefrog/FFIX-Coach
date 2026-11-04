@@ -181,7 +181,7 @@ _STEAL_LINE = re.compile(r"\bsteal\b\s*(.*)", re.I)
 def steal_targets(turns: list[str]) -> list[tuple[int, str | None]]:
     """(line index, item) for each fight-card line that says to steal. The item is
     None when the line doesn't name one ("Soul Blade, then steal")."""
-    from screen import match_item
+    from items import match_item
     out = []
     for i, line in enumerate(turns):
         if not_checked(line):
@@ -201,7 +201,7 @@ _ITEM_PATTERNS: list[tuple[str, re.Pattern]] | None = None
 def _item_patterns():
     global _ITEM_PATTERNS
     if _ITEM_PATTERNS is None:
-        from screen import ITEMS, KEY_ITEMS
+        from items import ITEMS, KEY_ITEMS
         names = sorted(set(ITEMS + KEY_ITEMS) - _NOT_ITEMS, key=len, reverse=True)     # longest first
         pats = []
         for n in names:
@@ -231,7 +231,7 @@ def find_item(name: str) -> str | None:
                 return n
     # A small typo ("Phoenix Pinons", "Linen Curiass"): the closest name, if it's very close.
     import difflib
-    from screen import ITEMS, KEY_ITEMS
+    from items import ITEMS, KEY_ITEMS
     low = {i.lower(): i for i in ITEMS + KEY_ITEMS if i not in _NOT_ITEMS}
     for cand in (name.lower(), re.sub(r"e?s$", "", name.lower())):
         hit = difflib.get_close_matches(cand, low, n=1, cutoff=0.88)
@@ -310,7 +310,7 @@ _MENU_LINE = re.compile(r"^(zidane|vivi|garnet|steiner|freya|quina|eiko|amarant|
 
 @functools.lru_cache(maxsize=1)
 def _name_maps() -> tuple[dict, dict]:
-    from screen import ITEMS, ABILITIES
+    from items import ITEMS, ABILITIES
     def key(t):
         return re.sub(r"[^a-z0-9+%]", "", t.lower().replace("'s", ""))
     return {key(i): i for i in ITEMS}, {key(a): a for a in ABILITIES}
@@ -324,7 +324,7 @@ def menu_checks(line: str) -> tuple[str, bool, list[tuple[str, bool]], list[tupl
     are skipped; "Steiner, in order: ..." counts as Steiner."""
     if not_checked(line):
         return None
-    from screen import ITEMS, ABILITIES
+    from items import ITEMS, ABILITIES
     m = _MENU_LINE.match(re.sub(r",? in order|, then", "", line.strip()))
     if not m:
         return None
@@ -401,6 +401,9 @@ def shop_check(line: str) -> tuple[str, list[tuple[str, int, str]]] | None:
     notes = " ".join(re.findall(r"\(([^)]*)\)", rest))
     rest = re.sub(r"\([^)]*\)", "", rest)
     stolen = bool(re.search(r"\bstole|\bstolen", notes, re.I)) and kind == "buy"
+    # "6x Steepled Hats (Total)" / "6 Steepled Hats total": own that many, however you got them
+    total = kind == "buy" and bool(re.search(r"\b(in )?total\b", notes + " " + rest, re.I))
+    rest = re.sub(r"\b(in )?total\b", "", rest, flags=re.I)
     parts = []
     for chunk in re.split(r",|\bor\b|\band\b", rest):
         chunk = chunk.strip()
@@ -415,7 +418,7 @@ def shop_check(line: str) -> tuple[str, list[tuple[str, int, str]]] | None:
         item = find_item(name)
         if item is None:
             continue
-        from screen import ITEMS
+        from items import ITEMS
         if item not in ITEMS:
             continue
         n = int(num) if num else 1
@@ -423,10 +426,14 @@ def shop_check(line: str) -> tuple[str, list[tuple[str, int, str]]] | None:
             # "Sell all Ether": none left. "Sell 2 Cotton Robe": two fewer than before.
             rule = "some" if mod == "extra" else "less" if num and mod != "all" else "all"
         else:
-            rule = "total" if stolen else "add"
+            rule = "total" if stolen or total else "add"
             if stolen and kind == "buy" and re.search(r"\d", notes) and "unless" not in notes.lower():
                 rule = "total"                     # "Buy 5 Steepled Hats (4 if you stole one)": own 5
         parts.append((item, n, rule))
+    # "4x Cotton Robes (3 if no Gil)": one item with a smaller number it can also be: that's enough
+    low = re.search(r"\b(\d+)\s+if\b", notes, re.I)
+    if low and len(parts) == 1 and parts[0][2] == "add" and int(low.group(1)) < parts[0][1]:
+        parts[0] = (parts[0][0], int(low.group(1)), "add")
     return (kind, parts) if parts else None
 
 
@@ -602,14 +609,14 @@ def classify(line: str) -> LineInfo:
 
 @functools.lru_cache(maxsize=1)
 def _known_names() -> frozenset:
-    from screen import ITEMS, ABILITIES
+    from items import ITEMS, ABILITIES
     def key(t):
         return re.sub(r"[^a-z0-9+%]", "", t.lower().replace("'s", ""))
     return frozenset({key(x) for x in ITEMS + ABILITIES} | {"optimize", "optimise"} | set(SLOTS))
 
 
 def _unknown_tokens(rest: str) -> list[str]:
-    from screen import ITEMS, ABILITIES
+    from items import ITEMS, ABILITIES
     def key(t):
         return re.sub(r"[^a-z0-9+%]", "", t.lower().replace("'s", ""))
     known = _known_names()
