@@ -4,12 +4,25 @@ next step underneath."""
 
 from __future__ import annotations
 
+import re
+
 from dataclasses import dataclass, field
 from memory import GameState
 from syntax import substep_call, turn_groups
 from tuning import FLAG
 from steps import _record_of, step_lines
 from branches import step_numbers
+
+
+def tidy_line(line: str) -> str:
+    """A line as the panel shows it: its indent kept, and a tab inside it (with any spaces
+    round it) one space ("All Ethers,<tab>Phoenix Pinions" -> "All Ethers, Phoenix Pinions")."""
+    if not isinstance(line, str):
+        return line
+    body = line.lstrip(" \t")
+    if not body:
+        return line
+    return line[:len(line) - len(body)] + re.sub(r" *\t[ \t]*", " ", body.rstrip())
 
 
 @dataclass
@@ -233,6 +246,29 @@ class ViewMixin:
     def _view(self, state: GameState) -> View:
         """What the panel shows. Random encounters get no screen of their own:
         the current step stays up until a boss fight is recognised."""
+        view = self._full_view(state)
+        view = self._notes_only(view) if self.speedrun else view
+        view.lines = [tidy_line(l) for l in view.lines]
+        view.next_lines = [tidy_line(l) for l in view.next_lines]
+        return view
+
+    def _notes_only(self, v: View) -> View:
+        """Speedrun mode: the step's title and notes, and nothing read from the game (no
+        enemy HP, AP or levels, LV5, checks, fight counts or ticks)."""
+        s = self.current()
+        if s["type"] == "boss":
+            title = self.bosses.get(s["boss"], {}).get("name", s["boss"])
+            lines = list(self.bosses.get(s["boss"], {}).get("turns", []))
+        else:
+            title = s.get("title") or ("Menu" if s["type"] == "menu" else "Next")
+            lines = list(v.lines)                  # (sub-step lines already sorted out)
+        keep = [l for l in lines if not l.strip().startswith("@")]
+        header = f"Disc {s.get('disc', 1)}  \u00b7  {step_numbers(self.steps)[self.step]}"
+        return View(header=header, title=title, title_note=v.title_note, lines=keep,
+                    footer=v.footer, kind=v.kind, next_title=v.next_title, next_kind=v.next_kind,
+                    next_lines=v.next_lines)
+
+    def _full_view(self, state: GameState) -> View:
         s = self.current()
         header = f"Disc {s.get('disc', 1)}  ·  {step_numbers(self.steps)[self.step]}/{sum(1 for k, t in enumerate(self.steps) if not t.get('alt') and not self.is_inside(k))}  ·  {len(self.encounters)} encounter{'' if len(self.encounters) == 1 else 's'}"
         badges = self._status_badges(state)
@@ -247,7 +283,7 @@ class ViewMixin:
             badges += self._condition_badges(boss.get("needs", []), state)
             badges += self._lv5_badges(boss, state)
             if self.steal_off and self._steal_prev is None and self._steal_lines():
-                badges.append((self.steal_off, "info"))   # steals can't tick: neither bag nor screen
+                badges.append((self.steal_off, "info"))   # steals can't tick: the bag isn't found
             # Steals show only as a check mark on their line (no notes).
             if fighting:
                 badges += self._fight_readout(state)

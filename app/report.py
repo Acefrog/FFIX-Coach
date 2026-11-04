@@ -114,6 +114,30 @@ def _after(steps: list[dict], i: int, n: int) -> list[int]:
     return out
 
 
+def run_way(route: dict, progress: Path) -> dict[int, bool]:
+    """The way the run in progress goes, from the coach's progress file: for each step that is
+    one of several ways (a branch, or a version of a step with a condition), True if this run
+    takes it and False if not. {} with no run (no progress file)."""
+    import copy
+    import json
+    import tempfile
+    from coach import Coach
+    import routes
+    try:
+        data = json.loads(progress.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        return {}
+    c = Coach(routes.expand(copy.deepcopy(route)), learned_path=Path(tempfile.gettempdir()) / "ffix_coach_way.json")
+    c.branch_choice = {str(k): str(v) for k, v in (data.get("branches") or {}).items()}
+    c.obtained = [list(x) for x in data.get("obtained") or []]
+    out = {}
+    for i, s in enumerate(c.steps):
+        versions = c._versions(i)
+        if c.branch_of(s) is not None or any(c.steps[k].get("when") for k in versions if k != i):
+            out[i] = c.active(i)
+    return out
+
+
 def step_report(route: dict, learned=None) -> list[dict]:
     """For every step: {"ok": moves on / is recognised by itself, "how": in words,
     "screen": the screen it's learned to start on (or None)}."""
@@ -134,8 +158,7 @@ def step_report(route: dict, learned=None) -> list[dict]:
                 elif n > 1:
                     how += f" ({n} fights)"
             else:
-                how = ("Can't be recognised yet: pick where it starts (and its HP) in the editor, "
-                       "or press the Learn key (F6) during it once to teach it")
+                how = "Not recognised yet: set its room and HP, or press F6 in the fight"
             out.append({"ok": bool(known), "how": how, "screen": screen})
             continue
         need, opt, menu = _checkable(s)
@@ -144,28 +167,24 @@ def step_report(route: dict, learned=None) -> list[dict]:
         if after:
             need = 0                            # more to do after its last checked line: not by its lines
         if need:
-            ways.append(f"when its {need} checked line{'s are' if need > 1 else ' is'} done"
-                        + (" and the menu is closed" if menu else ""))
+            ways.append(f"{need} checked line{'s' if need > 1 else ''} done" + (", menu closed" if menu else ""))
         if s.get("end_screen") is not None:
-            ways.append(f"on reaching {field_name(int(s['end_screen']))}, where it finishes")
+            ways.append(f"at {field_name(int(s['end_screen']))} (its finish)")
         nxt = _after(steps, i, FIELD_LOOKAHEAD)
         for j in nxt:
             f = steps[j].get("screen") if steps[j].get("screen") is not None else learned.field(_key(steps[j]), name)
             if f is not None and f != screen:
-                ways.append(f"on reaching {field_name(f)}, where step {j + 1} starts")
+                ways.append(f"at {field_name(f)}")
                 break
         j = nxt[0] if nxt else len(steps)       # the very next step is a fight it knows
         if j < len(steps) and steps[j]["type"] == "boss" and fight_known(r, learned, j):
-            ways.append(f"when step {j + 1}'s fight starts")
+            ways.append("next fight starts")
         if ways:
-            how = "Moves on by itself: " + "; or ".join(ways)
+            how = "Moves on: " + " · or ".join(ways)
             if opt and not need:
-                how += f" ({opt} \"if\" line{'s' if opt > 1 else ''} not waited for)"
+                how += f" ({opt} \"if\" line{'s' if opt > 1 else ''} skipped)"
         else:
-            how = ("Needs the Learn key here: " + ("there's more to do after its last checked line" if after else
-                                                    "nothing on it can be checked") +
-                   " and the next step's screen isn't known yet. Press the Learn key (F6) once "
-                   "where the next step starts, or pick it under Area.")
+            how = "Won't move on by itself: set the next step's Starts on, or press Shift+F6 there"
         out.append({"ok": bool(ways), "how": how, "screen": screen})
     return out
 
@@ -219,6 +238,9 @@ def _find(route: dict, number: str, title: str) -> int | None:
     return min(hits, key=lambda i: abs(i - at)) if hits else None
 
 
+_UNTICKED = re.compile(r"^\S+ (F8|Shift\+F8) on (\S+) (.*?): \"(.*)\" not ticked$")
+
+
 def run_summary(route: dict, lines: list[str]) -> dict[int, list[str]]:
     """Step index -> what happened there last run, in words."""
     out: dict[int, list[str]] = {}
@@ -235,6 +257,13 @@ def run_summary(route: dict, lines: list[str]) -> dict[int, list[str]]:
                     "F8 pressed to move on from here")
             elif why.startswith("F7"):
                 out.setdefault(i, []).append("F7: came back to this step (it moved on too soon or too far)")
+            continue
+        m = _UNTICKED.match(line)
+        if m:
+            key, n, t, what = m.groups()
+            i = _find(route, n, t)
+            if i is not None:
+                out.setdefault(i, []).append(f"{key} pressed with \"{what}\" not ticked")
             continue
         m = _NOT_LEARNED.match(line)
         if m:

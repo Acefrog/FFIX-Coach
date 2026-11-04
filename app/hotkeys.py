@@ -41,15 +41,28 @@ class Hotkeys:
 
     def _loop(self) -> None:
         user32 = ctypes.WinDLL("user32", use_last_error=True)
+        self._thread_id = ctypes.windll.kernel32.GetCurrentThreadId()
+        ids = []
         for i, name in enumerate(self.names, start=1):
             key = parse_key(name)
             if key is None or not user32.RegisterHotKey(None, i, MOD_NOREPEAT | key[0], key[1]):
                 self.failed.append(name)
+            else:
+                ids.append(i)
         self._ready.set()
         msg = wt.MSG()
-        while user32.GetMessageW(ctypes.byref(msg), None, 0, 0) != 0:
+        while user32.GetMessageW(ctypes.byref(msg), None, 0, 0) > 0:
             if msg.message == WM_HOTKEY and 1 <= msg.wParam <= len(self.names):
                 self.events.put(self.names[msg.wParam - 1])
+        for i in ids:                                   # stopped: free the keys for the next start
+            user32.UnregisterHotKey(None, i)
+
+    def close(self) -> None:
+        """Let the keys go (the coach stopped inside the app: the next start takes them again)."""
+        tid = getattr(self, "_thread_id", None)
+        if tid:
+            ctypes.windll.user32.PostThreadMessageW(tid, 0x0012, 0, 0)    # WM_QUIT
+            self._thread_id = None
 
     def poll(self) -> list[str]:
         out = []

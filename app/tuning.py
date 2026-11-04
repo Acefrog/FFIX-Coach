@@ -13,8 +13,6 @@ PICKUP_LOOKAHEAD = 2           # how many walk steps ahead a named pickup may ju
 FIELD_SETTLE = 0.5             # seconds a screen must hold before it counts
 FLAG = "\u2691 "                # on the panel title: the coach still has to learn this step
 NO_SCREEN = (0, 0xFFFF)                # screen numbers read during FMVs and loading: not places
-MAX_SCREEN = 9000               # from here up: the world map (many steps cross it: not a step's
-                               # place) and numbers read before the game is loaded
 STEP_SETTLE = 3.0              # seconds a step must be up before its screen is learned
 LOAD_SETTLE = 5.0              # no screens learned this soon after a save was loaded
 FP_MISMATCH_LIMIT = 4.0        # obvious battle but bytes don't match for this long = unreliable

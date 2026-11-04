@@ -13,8 +13,11 @@
     "Message: Fast",
     "Target Window: Always",
     "",
-    "[Masked Man]"
-   ]
+    "[Masked Man]",
+    "",
+    "Kidnap Garnet"
+   ],
+   "end_screen": 100
   },
   {
    "disc": 1,
@@ -49,7 +52,8 @@
     "[Steiner I]",
     "[Steiner II]",
     "[Bomb]"
-   ]
+   ],
+   "end_screen": 206
   },
   {
    "disc": 1,
@@ -147,8 +151,11 @@
     "[Baku Menu]",
     "[Baku]",
     "",
-    "1x Ether (Steiners room)"
-   ]
+    "1x Ether (Steiners room)",
+    "",
+    "Vivi > Exit"
+   ],
+   "screen": 206
   },
   {
    "disc": 1,
@@ -237,8 +244,11 @@
     "Heal Steiner/Vivi before if needed",
     "[Plant Brain]",
     "[Plant Brain menu]",
-    "[Plant Spiders]"
-   ]
+    "[Plant Spiders]",
+    "",
+    "Run to Ice Cavern"
+   ],
+   "screen": 206
   },
   {
    "disc": 1,
@@ -277,9 +287,14 @@
     "",
     "Equipment:",
     "  Blank: Broadsword, -Silk Shirt, -Leather Hat",
-    "  Zidane: Optimize, Wrist"
+    "  Zidane: Optimize, Wrist",
+    "  Steiner: Optimize",
+    "",
+    "Abilties:",
+    "  Steiner: Bird Killer, Bug Killer"
    ],
-   "inside": true
+   "inside": true,
+   "screen": 258
   },
   {
    "disc": 1,
@@ -291,15 +306,11 @@
     "  Eye Drop: Steiner, Blank, Vivi",
     "",
     "Equipment:",
-    "  Blank: Broadsword, -Silk Shirt, -Leather Hat",
-    "  Zidane: Optimize, Wrist",
-    "  Steiner: Optimize",
-    "",
-    "Abilties:",
-    "  Steiner: Bird Killer, Bug Killer"
+    "  Blank: -Silk Shirt, -Leather Hat",
+    "  Zidane: Optimize, Wrist"
    ],
    "inside": true,
-   "when": "Broadsword = 1"
+   "when": "Broadsword = 0"
   },
   {
    "disc": 1,
@@ -334,8 +345,11 @@
     "",
     "Heal before and After Sealion if required",
     "",
-    "[Sealion]"
-   ]
+    "[Sealion]",
+    "",
+    "Stutter step too Dali"
+   ],
+   "screen": 301
   },
   {
    "disc": 1,
@@ -375,8 +389,6 @@
    "title": "Dali",
    "lines": [
     "Garden > City > Bar > City > Bar > City > Vivi",
-    "1x Potion",
-    "",
     "[Dali Shop]",
     "[Dali Underground]",
     "",
@@ -386,7 +398,8 @@
     "[Mountain/Base]",
     "[Black Waltz 2]",
     "[Black Waltz 3]"
-   ]
+   ],
+   "screen": 352
   },
   {
    "disc": 1,
@@ -400,7 +413,7 @@
     "  1x Iron Sword"
    ],
    "inside": true,
-   "when": "Broadsword = 0 and Leather Wrist = 0"
+   "screen": 354
   },
   {
    "disc": 1,
@@ -413,7 +426,8 @@
     "  3x Feather Hats"
    ],
    "inside": true,
-   "when": "Broadsword = 1"
+   "when": "Broadsword = 1",
+   "screen": 354
   },
   {
    "disc": 1,
@@ -426,7 +440,8 @@
     "  1x Iron Sword"
    ],
    "inside": true,
-   "when": "Leather Wrist = 1"
+   "when": "Leather Wrist = 1",
+   "screen": 354
   },
   {
    "disc": 1,
@@ -434,10 +449,11 @@
    "title": "Dali Underground",
    "lines": [
     "Dagger: Feather Hat",
-    "Zidane: Mage Masher, Leather Wrist, Leather Shirt",
+    "Zidane: Leather Wrist, Leather Shirt",
     "Vivi: Silk Shirt"
    ],
-   "inside": true
+   "inside": true,
+   "screen": 403
   },
   {
    "disc": 1,
@@ -451,7 +467,8 @@
     "  Steinmer: Bird Killer, Bug Killer"
    ],
    "inside": true,
-   "when": "Broadsword = 0 and Iron Sword = 1"
+   "when": "Broadsword = 0 and Iron Sword = 1",
+   "screen": 456
   },
   {
    "disc": 1,
@@ -476,11 +493,11 @@
    "type": "boss",
    "title": "Black Waltz 3",
    "lines": [
-    "Zidane - Attack (This will cause BW3 to take flight into the air)",
-    "(HOLD CONFIRM TO GET ZIDANE’S FIRST ATTACK IMMEDIATELY AND GO FIRST)",
-    "Steiner - Fire Sword & Vivi Cast Double Fire",
-    "Zidane - Steal (You can get a Steepled Hat, Linen Cuirass, or Silver Gloves)",
-    "Steiner - Fire Sword & Vivi Cast Double Fire"
+    "Zidane: Attack instantly",
+    "Steiner, Vivi: Fire",
+    "",
+    "Zidane: Steal  Steepled Hat, Linen Cuirass, Silver Gloves",
+    "Steiner, Viv: Fire"
    ],
    "inside": true,
    "id": "black_waltz_3",
@@ -491,7 +508,285 @@
    "hp_names": {
     "1128": "Black Waltz 3"
    },
-   "screen": 501
+   "screen": 503
+  },
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "Lindblum",
+   "lines": [
+    "Elevator > Freya > Weapon Shop",
+    "",
+    "[Lindblum Weapon Shop]",
+    "[Lindblum Synth Shop]",
+    "",
+    "Train Car > Hideout > Castle > Garnet",
+    "",
+    "[Festival of the Hunt]",
+    "[Dragon's Gate shop]",
+    "",
+    "1x Tent (Right side)",
+    "",
+    "Exit > Chocobo Forest > Grotto",
+    "",
+    "4x Gysahl Greens"
+   ]
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "Lindblum Weapon Shop",
+   "lines": [
+    "Sell:",
+    "  All Ethers,\tPhoenix Pinions,\tEye Drops",
+    "  Silver Gloves, Linen Curiass",
+    "",
+    "Buy:",
+    "  2x Mage Masher",
+    "  1x Glass Armlet",
+    "  6x Steepled Hats (Total)",
+    "  1x Headgear",
+    "  1x Iron Helm",
+    "  1x Leather Plate"
+   ],
+   "inside": true,
+   "screen": 562
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "Lindblum Synth Shop",
+   "lines": [
+    "Synth:",
+    "  1x The Ogre",
+    "  2x Yellow Scarves",
+    "  4x Cotton Robes (3 if no Gil)"
+   ],
+   "inside": true,
+   "screen": 560,
+   "end_screen": 559
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Festival of the Hunt",
+   "lines": [
+    "KO Zidane",
+    "#Freya wins Coral Ring"
+   ],
+   "inside": true,
+   "id": "new_sub_step_9",
+   "preset": "Festival of the Hunt",
+   "hp": [
+    201
+   ],
+   "screen": 566
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "Dragon's Gate shop",
+   "lines": [
+    "Sell:",
+    "  All Cotton Robes",
+    "",
+    "Buy:",
+    "  21x Potions",
+    "  15x Phoenix Down"
+   ],
+   "inside": true,
+   "screen": 602
+  },
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "Gizamaluke's Grotto",
+   "lines": [
+    "Bell > Door",
+    "",
+    "1x Gizamaluke Bell",
+    "",
+    "[Grotto Entrance menu]",
+    "[Black Mages]",
+    "[After Black Mages]",
+    "",
+    "Moogle > Chest > Right Door > Left Door",
+    "",
+    "1x Holy Bell",
+    "",
+    "[Gizamaluke menu]",
+    "[Gizamaluke]"
+   ],
+   "screen": 701
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "Grotto Entrance menu",
+   "lines": [
+    "After ringing bell at the door",
+    "",
+    "Equipment:",
+    "  Freya: Optimize",
+    "  Zidane: Optimize, Coral Ring",
+    "",
+    "Abilities:",
+    "  Zidane: Undead Killer, Man Eater",
+    "  Freya: Bird Killer, Level Up",
+    "",
+    "Front row Freya"
+   ],
+   "inside": true
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Black Mages",
+   "lines": [
+    "Zidane attack",
+    "Hold ATB if mage attacks first",
+    "",
+    "Heal after Zorn/Thorn flee"
+   ],
+   "inside": true,
+   "id": "new_sub_step_10",
+   "preset": "Black Mages (Gizamaluke's Grotto)",
+   "hp": [
+    398
+   ],
+   "hp_names": {
+    "398": "Black Mage"
+   },
+   "screen": 703,
+   "fights": 2
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "After Black Mages",
+   "lines": [
+    "Equipment:",
+    "  Zidane: Optimize, Mage Masher",
+    "",
+    "Abilties:",
+    "  Zidane: Bird Killer"
+   ],
+   "inside": true
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "Gizamaluke menu",
+   "lines": [
+    "At the Gizmaluke door",
+    "",
+    "Equipment:",
+    "",
+    "  Zidane: Optimize, Leather Wrist",
+    "  Vivi: Glass Armlet"
+   ],
+   "inside": true,
+   "screen": 706
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Gizamaluke",
+   "lines": [
+    "Throw Tents",
+    "If Tent = Miss > Zidane: Soul Blade",
+    "",
+    "Zidane, Freya: Attack",
+    "Vivi: Heal"
+   ],
+   "inside": true,
+   "id": "new_sub_step_11",
+   "preset": "Gizamaluke",
+   "hp": [
+    3175
+   ],
+   "hp_names": {
+    "3175": "Gizamaluke"
+   },
+   "screen": 707
+  },
+  {
+   "disc": 1,
+   "type": "move",
+   "title": "Burmecia",
+   "lines": [
+    "1x Multina Racket",
+    "",
+    "Elephant man > Human man > Mary > Alley",
+    "",
+    "[World Map menu]",
+    "",
+    "Burmecia > Up one screen",
+    "",
+    "Zidane: The Ogre",
+    "",
+    "[Burmecia Mages]",
+    "",
+    "Zidane: Mage Masher, Leather Hat",
+    "Back row Zidane",
+    "",
+    "1x Germinas Boots",
+    "[Beatrix I]"
+   ],
+   "screen": 800
+  },
+  {
+   "disc": 1,
+   "type": "menu",
+   "title": "World Map menu",
+   "lines": [
+    "Equipment:",
+    "  Zidane: Dagger, Coral Ring, Leather Shirt",
+    "",
+    "Abilties:",
+    "  Zidane: Man Eater, Protect Girls"
+   ],
+   "inside": true,
+   "screen": 9000
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Burmecia Mages",
+   "lines": [
+    "Zidane attack",
+    "Hold ATB if mage attacks first"
+   ],
+   "inside": true,
+   "id": "new_sub_step_12",
+   "preset": "Black Mages (Burmecia)",
+   "hp": [
+    398
+   ],
+   "hp_names": {
+    "398": "Black Mage"
+   },
+   "screen": 752
+  },
+  {
+   "disc": 1,
+   "type": "boss",
+   "title": "Beatrix I",
+   "lines": [
+    "Wait 10 turns, if safe steal.",
+    "",
+    "Turn 8: Jump skip"
+   ],
+   "inside": true,
+   "id": "beatrix_i",
+   "preset": "Beatrix 1",
+   "hp": [
+    3630
+   ],
+   "hp_names": {
+    "3630": "Beatrix"
+   },
+   "screen": 768
   }
  ]
 }

@@ -16,6 +16,7 @@ game open in DuckStation, e.g.  python app\finder.py check
     items           where the item bag is kept (in a shop: buy something, type its name)
     gil             where your gil is kept (type it, spend or get some, type it again)
     config          FF9's Config menu settings your route uses (Config menu open)
+    keyitems        every key item, read from the game's own list in memory
     zidane          which party position Zidane is in, if he isn't on top
 
 Rarely needed (these are worked out from the character records already):
@@ -28,7 +29,6 @@ from __future__ import annotations
 
 import json
 import sys
-import time
 
 from memory import DuckStationRam, MemoryError_, PS1_RAM_SIZE
 
@@ -565,7 +565,7 @@ def pattern_hits(snap: bytes, lo: int, hi: int, want: list[int | None]) -> list[
 
 
 def ask_equipment(who: str) -> list[int | None] | None:
-    from screen import ITEMS, match_item
+    from items import ITEMS, match_item
     print(f"Type {who}'s 5 equipment slots as the Equip screen shows them, top to bottom")
     print("(weapon, head, wrist, armour, accessory). Leave a line empty for an empty slot.")
     out = []
@@ -630,7 +630,7 @@ def changed_bits(a: bytes, b: bytes, base: int) -> list[tuple[int, int]]:
 
 def find_abilities(ram: DuckStationRam, who: str, cfg: dict) -> dict[str, list[int]] | None:
     """Learn where support abilities are switched on, by watching you switch them."""
-    from screen import match_ability
+    from items import match_ability
     chars = cfg.get("addresses", {}).get("chars", {})
     if who not in chars or "exp" not in chars[who]:
         print(f"Run `python app\\finder.py stats {who}` first (abilities are found next to {who}'s EXP).")
@@ -717,6 +717,67 @@ def find_row(ram: DuckStationRam, who: str, cfg: dict) -> dict | None:
     return {"off": addr - exp, "bit": bit, "back": val if back else 1 - val}
 
 
+def key_items_from_screen(names: list[str], block: bytes) -> dict[str, list[int]] | None:
+    """The Key Items screen lists the key items you have in the game's order; the block has a
+    bit on for each. So the n-th name is the n-th bit that's on. None if they don't match up."""
+    on = [i for i in range(len(block) * 8) if block[i >> 3] >> (i & 7) & 1]
+    if len(on) != len(names):
+        return None
+    out: dict[str, list[int]] = {}
+    for name, bit in zip(names, on):
+        out.setdefault(name, []).append(bit)
+    return out
+
+
+def find_key_items(ram: DuckStationRam, cfg: dict) -> dict | None:
+    """Every key item's bits: read from the game's own key item name table in memory, with
+    nothing to do. If that isn't there (another language), from the Key Items screen."""
+    import difflib
+    from items import KEY_ITEM_BYTES, KEY_ITEMS, key_item_ids, read_key_item_order
+    a = cfg.get("addresses", {})
+    if not a.get("inventory"):
+        print("Find the Item bag first (it's just before the key items).")
+        return None
+    inv = int(a["inventory"], 16) if isinstance(a["inventory"], str) else int(a["inventory"])
+    at = int(a["key_items_at"], 16) if a.get("key_items_at") else inv + 0x200
+    order = read_key_item_order(ram.snapshot())
+    if order:
+        ids = key_item_ids(order)
+        block = ram.read(at, KEY_ITEM_BYTES)
+        have = sorted(n for n, bits in ids.items() if any(block[b >> 3] >> (b & 7) & 1 for b in bits))
+        print(f"Read the game's key item list from memory: all {len(ids)} key items.")
+        print("You have: " + (", ".join(have) if have else "none yet") + ".")
+        return {"key_items_at": f"0x{at:06X}", "key_item_ids": ids}
+    names = {n.lower(): n for n in KEY_ITEMS}
+    print("Couldn't find the game's key item list in memory (another language?). Instead:")
+    print("open the menu: Item > Key Items, and type every key item it lists, in order: row by row,")
+    print("left then right in each row, separated by commas (scroll down if there are more).\n")
+    while True:
+        try:
+            text = input("  Key items: ").strip()
+        except EOFError:
+            return None
+        if not text:
+            return None
+        typed, bad = [], []
+        for part in [x.strip() for x in text.split(",") if x.strip()]:
+            m = names.get(part.lower()) or next(iter(difflib.get_close_matches(part.lower(), names, 1, 0.75)), None)
+            (typed.append(names.get(m, m)) if m else bad.append(part))
+        if bad:
+            print("    Not key items I know: " + ", ".join(bad) + ". Check the spelling and type them all again.")
+            continue
+        ids = key_items_from_screen(typed, ram.read(at, KEY_ITEM_BYTES))
+        if ids is None:
+            on = sum(bin(b).count("1") for b in ram.read(at, KEY_ITEM_BYTES))
+            print(f"    The game has {on} key items, you typed {len(typed)}: check the list (does it scroll?).")
+            continue
+        saved = {k: (v if isinstance(v, list) else [v]) for k, v in (a.get("key_item_ids") or {}).items()}
+        for n, bits in ids.items():
+            saved[n] = sorted(set(saved.get(n, [])) | set(bits))
+        print(f"    Saved {len(ids)}: " + ", ".join(ids) + ".")
+        return {"key_items_at": f"0x{at:06X}", "key_item_ids": saved}
+
+
 def find_gil(ram: DuckStationRam, cfg: dict) -> int | None:
     print("Finding your gil. Open the menu (gil shows bottom right), or stand in a shop.")
     gil = ask_int("Gil: ")
@@ -751,7 +812,7 @@ def route_config_lines() -> list[tuple[str, str]]:
     import routes
     from syntax import config_check
     try:
-        route = json.loads(routes.path().read_text(encoding="utf-8"))
+        route = json.loads(routes.path().read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
         return []
     out, seen = [], set()
@@ -865,7 +926,7 @@ def bag_candidates(before: bytes, after: bytes, item_id: int) -> list[tuple[int,
 
 
 def find_items(ram: DuckStationRam) -> dict | None:
-    from screen import ITEMS, match_item
+    from items import ITEMS, match_item
     from memory import parse_items
     print("Go into any shop (or open the Items menu).")
     cands = None
@@ -919,7 +980,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     what = argv[0].lower()
     args = argv[1:]
-    cfg = json.loads(CONFIG.read_text())
+    cfg = json.loads(CONFIG.read_text(encoding="utf-8-sig"))
     try:
         ram = open_ram(cfg)
     except MemoryError_ as e:
@@ -1029,6 +1090,14 @@ def main(argv: list[str] | None = None) -> int:
             cur[k] = v
         write_atomic(CONFIG, json.dumps(cfg, indent=2))
         print(f"Saved {len(found)} setting(s). Restart the coach: Config lines now tick.")
+        return 0
+    if what in ("keyitems", "key", "keys"):
+        found = find_key_items(ram, cfg)
+        if not found:
+            return 1
+        addrs.update(found)
+        write_atomic(CONFIG, json.dumps(cfg, indent=2))
+        print("Saved. Restart the coach: those key item pickups now tick from memory.")
         return 0
     if what in ("items", "inventory", "bag"):
         found = find_items(ram)

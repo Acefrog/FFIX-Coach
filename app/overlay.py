@@ -90,7 +90,7 @@ def _client_rect_for_pid(pid: int) -> tuple[int, int, int, int] | None:
 
 
 class Overlay:
-    def __init__(self, cfg: dict, pid: int = 0):
+    def __init__(self, cfg: dict, pid: int = 0, master=None):
         self.cfg = cfg
         self.pid = pid
         self.fit = cfg.get("fit", "black_bar")
@@ -107,9 +107,11 @@ class Overlay:
         self.width = self.fallback_width
         self.max_height = 10_000
         self.last_view: View | None = None
+        self.last_target: tuple[int, int, int, int] | None = None   # where the panel was last drawn
         self.with_next = True            # drawing the next step this time (dropped if it doesn't fit)
 
-        self.root = tk.Tk()
+        # Inside the app: a window of it (the app's own loop runs it). On its own: its own.
+        self.root = tk.Toplevel(master) if master is not None else tk.Tk()
         self.root.title("FFIX Coach")
         self.root.overrideredirect(True)
         self.root.attributes("-topmost", True)
@@ -321,7 +323,8 @@ class Overlay:
 
     def render(self, view: View) -> None:
         self.last_view = view
-        x, y, self.width, self.max_height = self._target()
+        self.last_target = self._target()
+        x, y, self.width, self.max_height = self.last_target
         # The next step (if shown) only goes in when it fits at the normal text size:
         # it never makes the step you're on smaller.
         self.with_next = bool(view.next_title)
@@ -346,8 +349,9 @@ class Overlay:
         self.root.geometry(f"{self.width}x{min(h, self.max_height)}+{x}+{y}")
 
     def follow(self) -> None:
-        """Re-place the panel if DuckStation's window moved or resized."""
-        if self.last_view is not None:
+        """Re-place the panel if DuckStation's window moved or resized (only then: drawing
+        it again from scratch every second made it flicker)."""
+        if self.last_view is not None and self._target() != self.last_target:
             self.render(self.last_view)
 
     def after(self, ms, fn):

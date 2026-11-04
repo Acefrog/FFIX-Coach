@@ -200,10 +200,6 @@ def test_random_encounter_does_not_move_the_route():
     assert g.coach.step == start
 
 
-
-
-
-
 def test_back_key_after_a_win_keeps_what_learn_taught():
     learned = tmp_learned()
     g = Game(learned, screens=False)
@@ -256,8 +252,6 @@ def test_learn_in_a_fight_that_isnt_the_typed_hp_learns_no_hp():
     assert any("not learned" in e for e in g.coach.events)
 
 
-
-
 def test_screens_learned_on_first_run_drive_the_second():
     learned = tmp_learned()
     g = Game(learned)
@@ -265,7 +259,7 @@ def test_screens_learned_on_first_run_drive_the_second():
     g.coach.goto(first)
     g.screen(300)
     g.screen(301)
-    g.coach.learn()                        # Learn on screen 301: the next step starts here
+    g.coach.learn_next()                   # Shift+F6 on screen 301: the next step starts here
     g.screen(301, seconds=4)
     assert g.coach.learned.field(Coach.step_key(ROUTE["steps"][first + 1]), g.coach.rname) == 301
 
@@ -277,7 +271,7 @@ def test_screens_learned_on_first_run_drive_the_second():
     assert g2.coach.step == first + 1
 
 
-def test_f8_teaches_nothing_and_loads_teach_no_screens():
+def test_nothing_is_learned_by_itself_only_with_the_learn_key():
     learned = tmp_learned()
     g = Game(learned)
     first = step_of("black_waltz_1") + 1
@@ -290,9 +284,9 @@ def test_f8_teaches_nothing_and_loads_teach_no_screens():
     key = lambda i: Coach.step_key(ROUTE["steps"][i])
     for i in range(first + 1, first + 5):
         assert g.coach.learned.field(key(i), g.coach.rname) is None, i      # by hand: nothing
-    g.coach._goto(first + 5, manual=False)  # a step that comes up by itself learns where
+    g.coach._goto(first + 5, manual=False)  # a step that comes up by itself learns nothing either
     g.screen(300, seconds=4)
-    assert g.coach.learned.field(key(first + 5), g.coach.rname) == 300
+    assert g.coach.learned.field(key(first + 5), g.coach.rname) is None
     g.coach._goto(first + 6, manual=False)
     g.coach.loaded_at = g.now              # a save loaded: you're somewhere else entirely
     g.screen(999, seconds=4)
@@ -416,8 +410,6 @@ def test_leftover_one_hp_does_not_fake_limit_glove():
     assert any(t == "Nobody on 1 HP yet" for t, _ in v.badges)
 
 
-
-
 def test_random_fight_shows_live_hp_and_keeps_the_step():
     g = Game()
     start = next(k for k, st in enumerate(ROUTE["steps"]) if st["type"] == "move")
@@ -483,8 +475,6 @@ def test_earth_guardian_card_has_corrected_eat_number():
     v = g.read()
     assert any("15,567" in line for line in v.lines)
     assert ("Enemy HP 20,756", "info") in v.badges     # live HP to judge the Eat
-
-
 
 
 def test_new_route_recognises_bosses_by_hp():
@@ -577,9 +567,9 @@ def test_hp_finder_prefers_real_table_when_decoy_also_updates():
     class R:
         def snapshot(self_inner):
             return ram.tick()
-    real_input, real_sleep = builtins.input, finder.time.sleep
+    real_input, real_sleep = builtins.input, finder._sleep
     builtins.input = lambda *_: next(answers)
-    finder.time.sleep = lambda *_: None
+    finder._sleep = lambda *_: None                     # (no waiting in the test)
     orig_set = ram.set_party
     def both(party, decoy_too=False):            # the decoy keeps up with live HP too
         orig_set(party, decoy_too=True)
@@ -594,7 +584,7 @@ def test_hp_finder_prefers_real_table_when_decoy_also_updates():
     try:
         found = find_battle(R2(), {})
     finally:
-        builtins.input, finder.time.sleep = real_input, real_sleep
+        builtins.input, finder._sleep = real_input, real_sleep
     assert found["battle_base"] == "0x10A7C0" and found["slot_stride"] == "0x1B4", found
 
 
@@ -693,8 +683,6 @@ def test_calibrated_flags_ignore_field_garbage():
         g.ram.write(g.a.party_atb[0], 200 + (k * 53) % 1200)
         v = g.read()
     assert not g.coach.in_battle and g.coach.step == target
-
-
 
 
 def test_screen_jumps_limited_and_skip_shared_screens():
@@ -798,18 +786,6 @@ def in_boss_fight(boss, hp):
     return g, v
 
 
-def test_steal_messages_are_parsed_from_screen_text():
-    from screen import parse_message, match_item
-    assert parse_message("Stole Mage Masher!") == ("stole", "Mage Masher")
-    assert parse_message("  St0le  Chain Plate !\n") == ("stole", "Chain Plate")   # misread letter
-    assert parse_message("Stoie Steepled Hat!") == ("stole", "Steepled Hat")
-    assert parse_message("Stole Broadsword!") == ("stole", "Broadsword")
-    assert parse_message("Couldn't steal!") == ("failed", None)
-    assert parse_message("Doesn\u2019t have anything!") == ("failed", None)
-    assert parse_message("Thunder") is None and parse_message("") is None
-    assert match_item("Adaman Vest") == "Adaman Vest" and match_item("Adamn Vest") == "Adaman Vest"
-
-
 def test_each_steal_on_a_card_is_found():
     from coach import steal_targets
     found = {b: steal_targets(c["turns"]) for b, c in ROUTE["bosses"].items()}
@@ -818,31 +794,6 @@ def test_each_steal_on_a_card_is_found():
     assert [it for _, it in found["cage2"]] == ["Broadsword"]
     assert [it for _, it in found["black_waltz_3a"]] == [None]  # any of three items
     assert [it for _, it in found["taharka"]] == [None]         # optional: any item
-
-
-def test_steal_seen_on_screen_ticks_the_line():
-    hp = ROUTE["bosses"]["beatrix1"]["hp"][0]
-    g, v = in_boss_fight("beatrix1", hp[0] if isinstance(hp, list) else hp)
-    line = next(i for i, l in enumerate(v.lines) if "Steal" in l)
-    assert v.done == [] and g.coach.wants_steal_check()
-    g.coach.steal_event("failed", None)
-    v = g.read()
-    assert not any("missed" in t for t, _ in v.badges) and v.done == []
-    g.coach.steal_event("stole", "Potion")             # the wrong item: no tick
-    v = g.read()
-    assert v.done == []
-    g.coach.steal_event("stole", "Chain Plate")
-    v = g.read()
-    assert v.done == [line] and not g.coach.wants_steal_check()
-    assert not any("Stole" in t for t, _ in v.badges)      # just the check mark, no notes
-
-
-def test_steal_check_only_runs_in_boss_fights_with_steals():
-    g = Game()
-    g.coach.goto(step_of("beatrix1"))
-    assert not g.coach.wants_steal_check()             # not in the fight yet
-    g.coach.steal_event("stole", "Chain Plate")        # ignored outside the fight
-    assert g.coach.stolen == {}
 
 
 def test_scripted_boss_hidden_10000_hp_is_taken_off():
@@ -864,8 +815,6 @@ def test_scripted_boss_hidden_10000_hp_is_taken_off():
     g.ram.write(g.a.enemy_hp[0], 9950)                # below 10,000: the game ends the fight
     g.read()
     assert g.coach.battle_cleared
-
-
 
 
 def test_beaten_boss_moves_on_before_battle_screen_closes():
@@ -967,18 +916,6 @@ def test_boss_shows_only_enemies_matching_its_card():
     g.ram.write(g.a.enemy_hp[0], 9990)              # Masked Man down: fight counts as won
     g.read(15)
     assert g.coach.step == step_of("masked_man") + 1
-
-
-def test_back_to_back_steals_both_count():
-    import screen
-    w = screen.StealWatcher(0, {})                   # no Windows here: nothing runs in the background
-    readings = [(0.0, "Stole Potion!"), (2.0, "Stole Mage Masher!"), (2.3, "Stole Mage Masher!"),
-                (2.6, ""), (2.9, "Stole Mage Masher!"),          # flicker: still the same message
-                (4.0, "Couldn't steal anything."), (8.0, "Stole Mage Masher!")]
-    for t, text in readings:
-        w.handle(text, now=t)
-    assert w.poll() == [("stole", "Potion"), ("stole", "Mage Masher"), ("failed", None),
-                        ("stole", "Mage Masher")]
 
 
 def test_going_back_after_a_won_fight_stays_back():
@@ -1088,11 +1025,6 @@ def test_reset_check_ignores_a_timer_that_never_counted():
 
 
 def test_pickups_tick_lines_and_move_on():
-    import screen
-    assert screen.parse_message("Received Ether!") == ("got", "Ether")
-    assert screen.parse_message("Received 2,700 Gil!") == ("got", "Gil")
-    assert screen.parse_message('Officer "What!? We haven\'t even received the minister s authorization!') is None
-    assert screen.parse_message('Zidane "Try to sound more casual. Like me.') is None
     g = Game()
     wreck = next(k for k, st in enumerate(ROUTE["steps"]) if st.get("title") == "Prima Vista wreck")
     g.coach.goto(wreck - 1)                            # still on the fight before it
@@ -1101,7 +1033,6 @@ def test_pickups_tick_lines_and_move_on():
     assert g.coach.step == wreck - 1
     g.coach.goto(wreck)
     g.read()
-    assert g.coach.wants_pickup_check()
     g.coach.pickup_event("Ether")
     g.coach.pickup_event("Potion")                     # not on this step: ignored
     g.coach.pickup_event("Ether")
@@ -1133,7 +1064,7 @@ def test_only_prefixed_lines_are_pickups():
     assert classify("Talk to Marcus").kind == "note"
 
 def menu_game():
-    import screen
+    import items
     g = Game()
     base = 0x1E1000
     g.a.chars = {n: {"exp": base + i * 0x90} for i, n in enumerate(
@@ -1142,7 +1073,7 @@ def menu_game():
     g.a.ability_bits = {"Bird Killer": (0x40, 1), "Bug Killer": (0x40, 2)}
     g.a.menu_flags = [(0x1F0300 + i, 0, 1) for i in range(3)]
     def equip(who, slot, item):
-        g.ram.write(g.a.chars[who]["exp"] + 0x30 + slot, screen.ITEMS.index(item), 1)
+        g.ram.write(g.a.chars[who]["exp"] + 0x30 + slot, items.ITEMS.index(item), 1)
     def ability(who, name, on=True):
         off, bit = g.a.ability_bits[name]
         a = g.a.chars[who]["exp"] + off
@@ -1256,7 +1187,7 @@ def test_scripted_boss_beaten_just_under_10000_still_counts():
 
 
 def bag_game(start):
-    from screen import ITEMS
+    from items import ITEMS
     g = Game()
     g.a.inventory = 0x1E0000
     bag = dict(start)
@@ -1315,11 +1246,6 @@ def test_shop_sell_lines_and_stolen_counts():
     assert 4 in v.done
 
 
-def test_file_window_text_is_not_a_steal():
-    from screen import parse_message
-    assert parse_message("[I Wrist+StoIe Broadsword].sav Date modified SAV File") is None
-
-
 def test_synth_lines_tick_like_buying_even_for_new_items():
     from coach import shop_check
     assert shop_check("Synth 3 Cotton Robes") == ("buy", [("Cotton Robe", 3, "add")])
@@ -1358,6 +1284,91 @@ def test_one_found_ability_places_the_rest_and_optimize_ticks():
     ability("freya", "Bird Killer"); ability("freya", "Level Up")
     v = g.read(2)
     assert birds in v.done
+
+
+def test_taking_gear_off_first_doesnt_tick_the_optimize_after_it():
+    g, equip, ability, menu = menu_game()
+    i = g.coach.step
+    g.coach.steps[i] = {"disc": 3, "type": "menu", "title": "Terra",
+                        "lines": ["Zidane: -Power Belt", "Zidane: Optimize", "Zidane: Gaia Gear"]}
+    g.coach._entry_step = None
+    equip("zidane", 4, "Power Belt")
+    menu(True)
+    v = g.read(2)
+    g.ram.write(g.a.chars["zidane"]["exp"] + 0x30 + 4, 255, 1)     # the Power Belt off
+    v = g.read(2)
+    assert 0 in v.done and 1 not in v.done             # that isn't Optimize
+    equip("zidane", 0, "Mythril Dagger")               # Optimize changes his gear after it
+    v = g.read(2)
+    assert 1 in v.done
+
+
+def test_optimize_with_its_gear_written_under_it_ticks_on_that_gear():
+    g, equip, ability, menu = menu_game()
+    i = g.coach.step
+    g.coach.steps[i] = {"disc": 3, "type": "menu", "title": "Memoria",
+                        "lines": ["Zidane: -Power Belt", "Zidane: Optimize",
+                                  "# Mythril Dagger / Bandana / Leather Wrist / Leather Shirt / -", "Zidane: Gaia Gear"]}
+    g.coach._entry_step = None
+    equip("zidane", 4, "Power Belt")
+    equip("zidane", 2, "Leather Wrist")
+    equip("zidane", 3, "Leather Shirt")
+    menu(True)
+    g.read(2)
+    g.ram.write(g.a.chars["zidane"]["exp"] + 0x30 + 4, 255, 1)
+    equip("zidane", 0, "Mythril Dagger")               # changed, but not all of it yet
+    v = g.read(2)
+    assert 1 not in v.done
+    equip("zidane", 1, "Bandana")                      # now it's what the note says
+    v = g.read(2)
+    assert 1 in v.done
+
+
+def test_a_sub_step_comes_up_on_its_start_screen_else_straight_away():
+    for start in (None, 2925):
+        g, equip, ability, menu = menu_game()
+        g.coach = Coach(_copy.deepcopy(ROUTE), learned_path=tmp_learned())   # (its own copy of the route)
+        i = g.coach.step
+        g.coach.steps[i] = {"disc": 4, "type": "move", "title": "Crystal World",
+                            "lines": ["[Menu A]", "Up, then hold Up", "Save point: menu", "[Menu B]"]}
+        g.coach.steps[i + 1] = {"disc": 4, "type": "menu", "title": "Menu A", "lines": ["Zidane: Mythril Dagger"],
+                                "inside": True}
+        g.coach.steps[i + 2] = {"disc": 4, "type": "menu", "title": "Menu B", "lines": ["Zidane: Bandana"],
+                                "inside": True}
+        if start is not None:
+            g.coach.steps[i + 2]["screen"] = start         # Starts on: the save point
+        g.coach._entry_step = None
+        g.screen(2919, seconds=1)
+        assert g.coach.step == i + 1                       # no start screen: Menu A comes up at once
+        menu(True); g.read(2)
+        equip("zidane", 0, "Mythril Dagger"); g.read(2)
+        menu(False); g.read(4)
+        g.screen(2919, seconds=4)
+        if start is None:
+            assert g.coach.step == i + 2, g.coach.events   # no start screen: straight away
+        else:
+            assert g.coach.step == i, g.coach.events       # waits on Crystal World...
+            g.screen(start, seconds=2)
+            assert g.coach.step == i + 2, g.coach.events   # ...for the save point
+        assert g.coach._start_screen(i + 1) is None        # coming up by itself taught nothing
+        menu(False)                                        # (the fake game's memory is shared by the tests)
+
+
+def test_optimize_with_an_item_after_it_needs_the_optimize_too():
+    g, equip, ability, menu = menu_game()
+    g.coach = Coach(_copy.deepcopy(ROUTE), learned_path=tmp_learned())   # (its own copy of the route)
+    i = g.coach.step
+    g.coach.steps[i] = {"disc": 1, "type": "menu", "title": "Plant Brain menu",
+                        "lines": ["Equipment:", "  Zidane: Optimize, Wrist", "  Steiner: Optimize"]}
+    g.coach._entry_step = None
+    equip("zidane", 2, "Wrist")                        # he already wears a Wrist
+    menu(True)
+    v = g.read(3)
+    assert 1 not in v.done                             # so the Wrist alone isn't it
+    equip("zidane", 0, "Mythril Dagger")               # Optimize changes his gear
+    v = g.read(2)
+    assert 1 in v.done
+    menu(False)                                        # (the fake game's memory is shared by the tests)
 
 
 def test_row_lines_tick():
@@ -1446,24 +1457,6 @@ def test_pickups_come_from_the_bag_when_it_is_set_up():
     assert g.coach.step == i + 1
 
 
-def test_black_frame_does_not_switch_to_reading_the_screen():
-    import screen
-    w = screen.StealWatcher.__new__(screen.StealWatcher)
-    w.screen_only, w._window_ok = False, True
-    w.pid, w.ov, w.full = 1, None, True
-    class O: max_dim = 2000
-    w.ocr = O()
-    old = (screen.message_rect, screen.main_window, screen.client_rect_for_pid, screen.capture_window)
-    screen.message_rect = lambda *a: (0, 0, 10, 10)
-    screen.main_window = lambda pid: 5
-    screen.client_rect_for_pid = lambda pid: (0, 0, 10, 10)
-    screen.capture_window = lambda *a: None             # black for a moment
-    try:
-        assert w.grab()[1] == b"" and not w.screen_only
-    finally:
-        screen.message_rect, screen.main_window, screen.client_rect_for_pid, screen.capture_window = old
-
-
 def test_gil_pickups_come_from_memory_when_set_up():
     g = Game()
     g.a.gil = 0x1E2000
@@ -1492,9 +1485,8 @@ def test_steals_come_from_the_bag_when_it_is_set_up():
     assert g.coach.battle_is_boss
     lines = g.coach._steal_lines()
     assert lines
-    g.coach.steal_event("stole", lines[0][1])          # the screen alone doesn't count now
+    g.coach.steal_event("stole", lines[0][1])          # only a steal seen in the bag counts
     assert not g.coach._steals_done()
-    assert not g.coach.wants_steal_check()             # no screen reading needed
     bag[lines[0][1]] = bag.get(lines[0][1], 0) + 1; put()
     g.ram.write(g.a.enemy_atb[0], 3000)
     g.read(2)
@@ -1511,6 +1503,9 @@ def test_reset_then_loading_a_save_keeps_your_place():
         igt(g, t)
         g.read()
     g.coach.encounters = [t - 100]
+    g.coach.obtained.append([t - 9000, "Broadsword", 1, "3.2 Prison Cage II"])   # stolen earlier this run
+    g.coach.branch_choice["count Broadsword = 0"] = "no"
+    g.coach.inside_done.add(b - 1)
     igt(g, 0)                                          # reset to the title screen
     g.read(10)
     igt(g, t - 5000)                                   # load a save from earlier
@@ -1520,6 +1515,10 @@ def test_reset_then_loading_a_save_keeps_your_place():
         g.read()
     assert g.coach.step == b and g.coach.resets == 0
     assert g.coach.encounters == []                    # that battle came after the save
+    # what you got, the ways taken and the sub-steps done come back with your place
+    assert g.coach._count("Broadsword") == 1, g.coach.obtained
+    assert g.coach.branch_choice.get("count Broadsword = 0") == "no"
+    assert b - 1 in g.coach.inside_done
 
 
 def test_minus_items_are_taken_off_and_drawn_red():
@@ -1641,10 +1640,6 @@ def test_indented_lines_belong_to_the_action_above():
     assert 3 in [i for i, _ in g.coach._steal_lines()]
 
 
-
-
-
-
 def _stats(g, k, seed):
     """Fill enemy slot k's record (past HP and ATB) with that enemy kind's stats."""
     import random
@@ -1652,8 +1647,6 @@ def _stats(g, k, seed):
     base = g.a.slot(4 + k, 0)
     for off in range(16, g.a.slot_stride):
         g.ram.write(base + off, r.randrange(1, 256), 1)
-
-
 
 
 def test_a_finished_step_you_come_back_to_stays_and_loads_undo_pickups():
@@ -1687,8 +1680,6 @@ def test_scripted_boss_ending_with_others_standing_moves_on():
     g.screen(5, encounters=False)
     g.fight([10033, 10167, 10038], 20, end_hp=[9941, 10167, 10038])   # Steiner beaten, the rest standing
     assert g.coach.step == b + 1
-
-
 
 
 def test_buy_sell_synth_headers_with_indented_items():
@@ -1754,8 +1745,6 @@ def test_leftover_big_number_in_empty_slot_is_not_hidden_boss_hp():
     g.code(False)
     g.read(10)
     assert g.coach.step == b and len(g.coach.encounters) == 1
-
-
 
 
 def _multi_game(boss, n, learned=None):
@@ -1883,17 +1872,115 @@ def test_fight_inside_a_step_goes_back_to_it():
     assert g.coach.step == 4
 
 
-def test_f8_moves_past_fights_inside_a_step_and_back_out_of_them():
-    g = Game(tmp_learned())
-    g.coach = Coach(_inside_route(), learned_path=tmp_learned())
-    g.coach.goto(1)
-    g.coach.next_step()
-    assert g.coach.step == 3                                   # past Baku, to Plant Brain
-    g.coach.goto(2)
-    v = g.read()
-    assert v.title_note == "Crash Site" and "Crash Site" not in v.title
-    g.coach.next_step()
-    assert g.coach.step == 1 and 2 in g.coach.inside_done
+def test_shift_f8_goes_past_every_sub_step_to_the_next_main_step():
+    import main
+    c = Coach(_inside_route(), learned_path=tmp_learned())
+    c.goto(1)
+    c.next_main_step()
+    assert c.step == 3                                         # past Baku, to Plant Brain
+    c.goto(2)
+    c.next_main_step()
+    assert c.step == 3                                         # from inside Crash Site too
+    c.goto(4)
+    c.next_main_step()
+    assert c.step == 4                                         # the end: stays
+    actions, _, _ = main.key_actions(c, {})
+    assert actions["Shift+F8"] == c.next_main_step and actions["F8"] == c.next_step
+
+
+def test_shift_f7_goes_back_past_sub_steps_to_a_main_step():
+    import main
+    c = Coach(_inside_route(), learned_path=tmp_learned())
+    c.goto(3)
+    c.prev_main_step()
+    assert c.step == 1                                         # past Baku, back to Crash Site
+    c.goto(2)
+    c.prev_main_step()
+    assert c.step == 1                                         # from Baku: the step it's in
+    c.prev_main_step()
+    assert c.step == 0
+    c.prev_main_step()
+    assert c.step == 0                                         # the start: stays
+    actions, _, _ = main.key_actions(c, {})
+    assert actions["Shift+F7"] == c.prev_main_step and actions["F7"] == c.prev_step
+
+
+def test_f6_learns_where_the_step_youre_on_starts():
+    import routes
+    learned = tmp_learned()
+    c = Coach(routes.expand({"name": "t", "steps": [
+        {"disc": 1, "type": "move", "title": "Dali", "lines": ["Walk", "[Dali Shop]"]},
+        {"disc": 1, "type": "menu", "title": "Dali Shop", "lines": ["1x Wrist"], "inside": True},
+        {"disc": 1, "type": "move", "title": "After", "lines": ["Walk on"]}]}), learned_path=learned)
+    g = Game(learned)
+    g.coach = c
+    c.goto(1)
+    g.screen(354)                                      # in the shop
+    c.learn()                                          # F6: Dali Shop starts here
+    assert c.step == 1 and c._start_screen(1) == 354 and c._start_screen(2) is None
+    c.learn_next()                                     # Shift+F6: the step after it starts here
+    assert c._start_screen(2) == 354
+
+
+def test_learn_on_a_sub_step_teaches_the_next_step_not_one_past_a_fight():
+    import routes
+    learned = tmp_learned()
+    c = Coach(routes.expand({"name": "t", "steps": [
+        {"disc": 4, "type": "move", "title": "Memoria", "lines": ["Walk", "[Menu A]", "[Maliris]", "[Menu B]"]},
+        {"disc": 4, "type": "menu", "title": "Menu A", "lines": ["Zidane: Optimize"], "inside": True},
+        {"disc": 4, "type": "boss", "title": "Maliris", "id": "m", "lines": ["Hit"], "hp": [59492], "inside": True},
+        {"disc": 4, "type": "menu", "title": "Menu B", "lines": ["Freya: Optimize"], "inside": True},
+        {"disc": 4, "type": "move", "title": "After", "lines": ["Walk on"]}]}), learned_path=learned)
+    g = Game(learned)
+    g.coach = c
+    c.goto(1)
+    g.screen(2904)
+    c.learn_next()                                     # the next step is the fight: not Menu B
+    assert c.step == 1 and "fight" in c.message
+    assert c._start_screen(3) is None
+
+
+def test_starting_the_coach_mid_game_doesnt_teach_step_1():
+    learned = tmp_learned()
+    g = Game(learned)                                  # a fresh coach, on a save far into the game
+    g.screen(2919, seconds=6)
+    assert g.coach.step == 0 and g.coach._start_screen(0) is None
+
+
+def test_f8_goes_back_to_the_step_for_its_notes_between_sub_steps():
+    import routes
+    c = Coach(routes.expand({"name": "t", "steps": [
+        {"disc": 4, "type": "move", "title": "Memoria",
+         "lines": ["[Menu A]", "[Maliris]", "Walk to the bridge", "1x Rune Claws", "[Tiamat menu]"]},
+        {"disc": 4, "type": "menu", "title": "Menu A", "lines": ["Zidane: Optimize"], "inside": True},
+        {"disc": 4, "type": "boss", "title": "Maliris", "id": "m", "lines": ["Hit"], "hp": [59492], "inside": True},
+        {"disc": 4, "type": "menu", "title": "Tiamat menu", "lines": ["Freya: Optimize"], "inside": True},
+        {"disc": 4, "type": "move", "title": "After", "lines": ["Walk on"]}]}), learned_path=tmp_learned())
+    path = [c.step]
+    for _ in range(5):
+        c.next_step()
+        path.append(c.step)
+    assert path == [0, 1, 2, 0, 3, 4], path            # Menu A > Maliris > back for the walk > Tiamat menu
+
+
+def test_f8_goes_through_sub_steps_in_order_like_f7_back():
+    for speedrun in (False, True):
+        g = Game(tmp_learned())
+        g.coach = Coach(_inside_route(), learned_path=tmp_learned())
+        g.coach.speedrun = speedrun
+        g.coach.goto(1)
+        g.coach.next_step()
+        assert g.coach.step == 2                               # into Baku, inside Crash Site
+        v = g.read()
+        assert v.title_note == "Crash Site" and "Crash Site" not in v.title
+        g.coach.next_step()
+        assert g.coach.step == 3 and 2 in g.coach.inside_done  # then Plant Brain
+        g.coach.prev_step()
+        g.coach.prev_step()
+        assert g.coach.step == 1                               # F7 back: Baku, then Crash Site
+        g.coach.goto(4)
+        g.coach.next_step()
+        assert g.coach.step == 4                               # the end: stays
 
 
 def test_every_ability_ap_is_read_from_the_character_records():
@@ -2045,7 +2132,7 @@ def test_editor_report_says_how_each_step_moves_on_and_what_last_run_needed():
     L = Learned(path)
     L.add_battle_screen("boss_d", 500)                       # (where it started when it was won)
     rep = report.step_report(route, L)
-    assert not rep[0]["ok"] and "Learn key" in rep[0]["how"]   # nothing to check, nothing learned
+    assert not rep[0]["ok"] and "Shift+F6" in rep[0]["how"]   # nothing to check, nothing learned
     assert rep[1]["ok"] and "1 checked line" in rep[1]["how"]
     assert rep[2]["ok"] and "fight starts" in rep[2]["how"]  # the next step's fight has typed HP
     assert rep[3]["ok"] and "4999" in rep[3]["how"]
@@ -2064,8 +2151,6 @@ def test_editor_report_says_how_each_step_moves_on_and_what_last_run_needed():
     assert any("step 2" in m and "F7" in m for m in msgs)
     L.forget_step("boss:boss_d", "R", ["boss_d"])
     assert L.formation("boss_d") is None
-
-
 
 
 def test_shop_lines_written_with_x_counts():
@@ -2169,6 +2254,87 @@ def test_memory_setup_window_runs_a_finder_and_saves():
         finder.CONFIG, finder.open_ram = old
 
 
+def test_each_sub_step_finishes_by_itself_not_only_the_last():
+    g, bag, put = bag_game({"Potion": 4})
+    i = g.coach.step
+    g.coach.steps[i] = {"disc": 1, "type": "move", "title": "Dali", "lines": ["Walk", "[Dali Shop]", "[Underground]"]}
+    g.coach.steps[i + 1] = {"disc": 1, "type": "move", "title": "Dali Shop", "lines": ["1x Elixir"], "inside": True}
+    g.coach.steps[i + 2] = {"disc": 1, "type": "move", "title": "Underground", "lines": ["1x Ether"], "inside": True}
+    g.coach.steps[i + 3] = {"disc": 1, "type": "move", "title": "After", "lines": ["Go"]}
+    g.coach._entry_step = None
+    g.read(3)
+    assert g.coach.step == i + 1                       # the first sub-step comes up
+    g.now += 10
+    bag["Elixir"] = 1; put()
+    g.read(4)
+    assert g.coach.step == i + 2, g.coach.events       # done by itself: on to the next one
+    bag["Ether"] = 1; put()
+    g.read(4)
+    assert g.coach.step == i + 3, g.coach.events       # and that one too, then the next step
+
+
+def test_fight_spoils_never_count_as_pickups():
+    # Sealion's spoils include a Hi-Potion: that isn't Dali's "1x Hi-Potion", nor this
+    # step's "any item"; a pickup once the spoils are in counts as usual.
+    g, bag, put = bag_game({"Potion": 4})
+    g.coach.steps = _copy.deepcopy(g.coach.steps)      # (its own copy of the route)
+    i = g.coach.step
+    g.coach.steps[i] = {"disc": 1, "type": "move", "title": "Ice Cavern",
+                        "lines": ["1x Any item (hidden)", "Walk on"]}
+    g.coach.steps[i + 1] = {"disc": 1, "type": "move", "title": "Dali", "lines": ["1x Hi-Potion (Bottom)"]}
+    g.coach._entry_step = None
+    g.read(3)
+    g.coach._battle_end_at = g.now                     # Sealion just won
+    bag["Hi-Potion"] = 1; bag["Ether"] = 1; put()      # its spoils
+    g.read(2)
+    assert g.coach.step == i and not g.coach.picked.get(i) and not g.coach.picked.get(i + 1), g.coach.picked
+    g.now += 10                                        # later: a hidden item
+    bag["Echo Screen"] = 1; put()
+    g.read(2)
+    assert g.coach.picked.get(i) == ["Echo Screen"], g.coach.picked
+
+
+def test_a_done_step_waits_for_the_next_steps_start_screen_if_it_has_one():
+    for start in (None, 350):
+        g, bag, put = bag_game({"Potion": 4})
+        g.coach.steps = _copy.deepcopy(g.coach.steps)  # (its own copy of the route)
+        i = g.coach.step
+        g.coach.steps[i] = {"disc": 1, "type": "move", "title": "Ice Cavern", "lines": ["1x Tent (on the ledge)"]}
+        g.coach.steps[i + 1] = {"disc": 1, "type": "move", "title": "Dali", "lines": ["Walk", "1x Potion"]}
+        if start is not None:
+            g.coach.steps[i + 1]["screen"] = start         # Starts on: Dali
+        g.coach._entry_step = None
+        g.screen(308, seconds=1)
+        g.now += 10
+        bag["Tent"] = 1; put()
+        g.read(3)
+        if start is None:
+            assert g.coach.step == i + 1                   # no start screen: straight on
+            continue
+        assert g.coach.step == i                           # Ice Cavern done, but Dali waits...
+        g.screen(start, seconds=2)
+        assert g.coach.step == i + 1, g.coach.events       # ...for its own screen
+
+
+def test_one_version_of_a_sub_step_done_means_they_all_are():
+    import routes
+    g, bag, put = bag_game({"Potion": 4})
+    g.coach = Coach(routes.expand({"name": "t", "steps": [
+        {"disc": 1, "type": "move", "title": "Dali", "lines": ["Walk", "[Dali Shop]", "[Dali Underground]"]},
+        {"disc": 1, "type": "menu", "title": "Dali Shop", "lines": ["1x Leather Wrist"], "inside": True},
+        {"disc": 1, "type": "menu", "title": "Dali Shop", "lines": ["1x Wrist"], "inside": True,
+         "when": "Leather Wrist = 1"},
+        {"disc": 1, "type": "move", "title": "Dali Underground", "lines": ["1x Feather Hat"], "inside": True},
+        {"disc": 1, "type": "move", "title": "After", "lines": ["Walk on"]}]}), learned_path=tmp_learned())
+    g.coach._entry_step = None
+    g.read(3)
+    assert g.coach.step == 1                           # the plain Dali Shop
+    g.now += 10
+    bag["Leather Wrist"] = 1; put()                    # buying it makes "Leather Wrist = 1" true...
+    g.read(6)
+    assert g.coach.step == 3, g.coach.events           # ...but that Dali Shop is done too: Underground next
+
+
 def test_walk_sub_step_goes_back_to_its_step_and_lv5_single_tick():
     g, bag, put = bag_game({"Potion": 4})
     i = g.coach.step
@@ -2217,7 +2383,7 @@ def _branch_route():
 
 def _branch_state(bag, steiner_sword=True):
     from memory import GameState
-    from screen import ITEMS
+    from items import ITEMS
     return GameState(enemy_hp=[], enemy_atb=[], party_atb=[], party_hp_slots=[], igt=0,
                      encounters_possible=False, battle_sig=b"",
                      items={ITEMS.index(k): n for k, n in bag.items()},
@@ -2254,7 +2420,7 @@ def test_alternative_steps_by_what_you_got_this_run():
 
 def test_getting_items_counts_steals_pickups_and_buys_not_unequipping_or_joining():
     from memory import GameState
-    from screen import ITEMS
+    from items import ITEMS
     B, W = ITEMS.index("Broadsword"), ITEMS.index("Wrist")
     def st(bag, equips, igt=1000):
         return GameState(enemy_hp=[], enemy_atb=[], party_atb=[], party_hp_slots=[], igt=igt,
@@ -2311,6 +2477,64 @@ def test_reaching_a_screen_of_the_alternative_takes_it():
     assert c.step == 5
 
 
+def test_speedrun_mode_takes_the_steps_without_a_condition_whatever_you_got():
+    from coach import step_numbers
+    for got in ([], ["Broadsword", "Broadsword"]):
+        c = Coach(_branch_route(), learned_path=tmp_learned())
+        c.speedrun = True
+        _got(c, *got)
+        ways = [c.steps[i]["title"] for i in range(len(c.steps)) if c.active(i)]
+        assert ways == ["Start", "Swap Blank", "Middle", "Won A", "End"], (got, ways)
+        c.goto(1)
+        c.next_step()
+        assert c.steps[c.step]["title"] == "Middle"   # never the alternative
+
+
+def test_speedrun_mode_drops_conditional_sub_steps_and_their_lines():
+    import routes
+    c = Coach(routes.expand({"name": "t", "steps": [
+        {"disc": 1, "type": "move", "title": "Dali", "lines": ["Walk", "[Dali Shop]", "[Baku Menu]"]},
+        {"disc": 1, "type": "menu", "title": "Dali Shop", "lines": ["Buy 2x Potion"], "inside": True},
+        {"disc": 1, "type": "menu", "title": "Baku Menu", "lines": ["Zidane: Leather Wrist"], "inside": True,
+         "when": "Leather Wrist = 1"},
+        {"disc": 1, "type": "move", "title": "End", "lines": ["Walk"]}]}), learned_path=tmp_learned())
+    c.speedrun = True
+    _got(c, "Leather Wrist")                           # got it, but the prime way doesn't use it
+    assert [c.active(i) for i in range(4)] == [True, True, False, True]
+    g = Game(tmp_learned())
+    g.coach = c
+    v = g.read()
+    assert not any("Baku" in l for l in v.lines) and any("Dali Shop" in l for l in v.lines)
+
+
+def test_speedrun_mode_shows_just_the_notes():
+    g = Game(tmp_learned())
+    g.coach.speedrun = True
+    b = step_of("black_waltz_2")
+    g.coach.goto(b)
+    g.coach.steps[b]["lines"] = g.coach.bosses[g.coach.steps[b]["boss"]]["turns"] = ["Attack", "@Zidane: Flee"]
+    start_fight(g, [1030])
+    v = g.read()
+    assert v.badges == [] and v.stats == [] and v.done == [] and v.steals == []
+    assert v.lines == ["Attack"]                       # no AP readout
+    assert "encounter" not in v.header and v.title == g.coach.bosses[g.coach.steps[b]["boss"]]["name"]
+    g.coach.speedrun = False
+    assert g.read().badges                             # practice mode: enemy HP and so on
+
+
+def test_speedrun_mode_doesnt_take_a_branch_by_reaching_its_room():
+    c = Coach(_branch_route(), learned_path=tmp_learned())
+    c.speedrun = True
+    c.goto(3)
+    c.learned.set_field(c.step_key(c.steps[5]), 500, "t")         # Lost A starts on screen 500
+    g = Game(tmp_learned())
+    g.coach = c
+    g.coach._enc_flag_seen.add(True)
+    g.screen(400, seconds=4)
+    g.screen(500, seconds=4)
+    assert c.step != 5
+
+
 def test_conditions_with_every_comparison_share_answers():
     from coach import parse_when, route_branches
     assert parse_when("Broadsword => 2") == ("cmp", "Broadsword", ">=", 2)
@@ -2340,10 +2564,10 @@ def test_sub_steps_are_numbered_and_go_the_way_of_their_step():
 def test_save_loaded_undoes_branches_and_sub_steps_done_after_it():
     c = Coach(_inside_route(), learned_path=tmp_learned())
     c.goto(1)
-    c.inside_done.add(2)                                       # Baku done
-    assert 2 in c.inside_done
     c._igt_last = 5000
-    c._dropped_to(1000, 5000)
+    c._sub_done(2)                                             # Baku done, at timer 5000
+    assert 2 in c.inside_done
+    c._dropped_to(1000, 5000)                                  # a save from before it
     assert not c.inside_done
     c.inside_done = {2}
     c.goto(0); c.goto(1)                                       # arriving at Crash Site again
@@ -2397,8 +2621,6 @@ def test_a_branch_can_check_two_items():
         assert c.step == want, (got, c.step)
     from coach import when_label
     assert when_label("Broadsword >= 1 and Leather Wrist >= 1") == "Broadsword >= 1 and Leather Wrist >= 1"
-
-
 
 
 def test_level_lines_show_levels_and_tick_at_a_target():
@@ -2484,7 +2706,7 @@ def test_a_called_sub_step_comes_up_when_the_lines_above_it_are_done():
 
 def test_a_save_loaded_isnt_items_got_and_65535_in_a_random_isnt_a_boss():
     from memory import GameState
-    from screen import ITEMS
+    from items import ITEMS
     B = ITEMS.index("Broadsword")
     def st(bag, igt):
         return GameState(enemy_hp=[], enemy_atb=[], party_atb=[], party_hp_slots=[], igt=igt,
@@ -2557,7 +2779,6 @@ def test_editor_checks_alternatives():
     r["steps"][0]["alt"] = True
     msgs = [m for _, _, m in editor.find_problems(r)]
     assert any("isn't an item" in m for m in msgs) and any("first step" in m for m in msgs)
-
 
 
 def test_switching_route_keeps_panel_settings_and_resume_choice():
@@ -2746,11 +2967,9 @@ def _kind_route():
         {"disc": 2, "type": "move", "title": "After", "lines": ["Walk on"]}]})
 
 
-
-
 def test_pickups_after_the_menu_finish_a_menu_step():
     import routes
-    from screen import ITEMS
+    from items import ITEMS
     g, equip, ability, menu = menu_game()
     g.a.inventory = 0x1E0000
     def bag(items):
@@ -2777,7 +2996,7 @@ def test_pickups_after_the_menu_finish_a_menu_step():
 
 def test_a_shop_sub_step_comes_up_on_its_screen():
     import routes
-    from screen import ITEMS
+    from items import ITEMS
     g = Game(tmp_learned())
     g.a.inventory = 0x1E0000
     def bag(items):
@@ -3134,7 +3353,7 @@ def test_a_step_with_several_fights_takes_them_from_new_screens_too():
     assert g.coach.groups_done.get(0) == 1
     g.fight([899], 15, screen=401)                     # part-way through: the next from somewhere else
     assert g.coach.current()["title"] == "After", g.coach.events
-    assert g.coach.learned.battle_screens("bander@0") == [FIGHT_SCREEN, 401]
+    assert g.coach.learned.battle_screens("bander@0") == []    # winning teaches nothing
 
 
 def test_a_step_finishes_on_its_finish_screen():
@@ -3166,10 +3385,678 @@ def test_learn_in_a_shop_teaches_the_shop_sub_step_and_it_comes_up():
     g.screen(400, seconds=4)
     g.screen(500, seconds=2)                          # in the shop (Tent not found yet): screen not known
     assert g.coach.step == 0
-    g.coach.learn()
+    g.coach.learn_next()
     g.read(5)
     assert g.coach.step == 1                          # learned, and the shop came up by itself
     assert g.coach.learned.field(Coach.step_key(g.coach.steps[1]), g.coach.rname) == 500
+
+
+def routes_expand(route):
+    import copy
+    import routes
+    return routes.expand(copy.deepcopy(route))
+
+
+def test_a_menu_starting_in_a_fight_room_waits_for_the_fight():
+    # "[Deathguise]" then "[After menu]", the menu starting in the fight's room: walking
+    # in for the fight mustn't open the menu first.
+    import route_test
+    route = {"name": "t", "steps": [
+        {"disc": 4, "type": "move", "title": "Crystal", "screen": 700,
+         "lines": ["Walk in", "[Deathguise]", "[After menu]", "Walk on"]},
+        {"disc": 4, "type": "boss", "title": "Deathguise", "inside": True, "screen": 701, "hp": [55000]},
+        {"disc": 4, "type": "menu", "title": "After menu", "inside": True, "screen": 701,
+         "lines": ["Zidane: Optimize"]},
+        {"disc": 4, "type": "move", "title": "End", "screen": 702, "lines": ["The end"]}]}
+    p = route_test.Play(routes_expand(route))
+    menu_at = []                                      # what was won when the menu came up
+    real = p.c._goto
+
+    def goto(i, manual, why=""):
+        if i == 2:
+            menu_at.append(set(p.c.inside_done))
+        real(i, manual, why)
+    p.c._goto = goto
+    found = p.run()
+    assert found == [], found
+    assert menu_at and all(1 in done for done in menu_at), menu_at
+
+
+def test_every_shipped_route_plays_to_its_end():
+    import json
+    import route_test
+    import routes
+    for name in routes.names():
+        raw = json.loads(routes.path(name).read_text(encoding="utf-8-sig"))
+        p = route_test.Play(routes_expand(raw))
+        found = p.run()
+        assert p.trace[-1] == "(end of the route)", (name, p.trace[-3:])
+        # On a new install the only problems allowed are start screens nobody has taught
+        assert all("isn't known" in why for _, why in found), (name, found)
+
+
+def test_random_states_and_keys_never_raise():
+    import json
+    import random
+    import route_test
+    import routes
+    from items import ITEMS
+    for name in routes.names():
+        rnd = random.Random(7)
+        raw = json.loads(routes.path(name).read_text(encoding="utf-8-sig"))
+        p = route_test.Play(routes_expand(raw))
+        c, g = p.c, p.g
+        screens = sorted({s["screen"] for s in c.steps if s.get("screen") is not None} | {50, 300, 9001})
+        keys = [c.learn, c.learn_next, c.next_step, c.prev_step, c.next_main_step, c.prev_main_step]
+        fight = False
+        for _ in range(1500):
+            r = rnd.random()
+            if r < 0.1:
+                g.ram.write(g.a.field_id, rnd.choice(screens))
+            elif r < 0.15:
+                fight = not fight
+                g.code(fight)
+                for s in range(4):
+                    g.ram.write(g.a.enemy_hp[s], rnd.choice([0, 33, 500, 10916]) if fight else 0)
+            elif r < 0.22:
+                it = rnd.choice(ITEMS)
+                p.bag[it] = max(0, p.bag.get(it, 0) + rnd.choice([-1, 1, 2]))
+                p.write_all()
+            elif r < 0.26:
+                p.equips[rnd.choice(route_test.CHARS)][rnd.randrange(5)] = rnd.choice([255, rnd.randrange(236)])
+                p.write_all()
+            elif r < 0.3:
+                for i in range(3):
+                    g.ram.mem[route_test.MENU + i] = rnd.choice([0, 1])
+            elif r < 0.36:
+                rnd.choice(keys)()
+            elif r < 0.37:
+                c.reload_route(routes_expand(raw))
+            g.read(rnd.randint(1, 4))
+
+
+def test_a_version_whose_condition_holds_replaces_the_plain_one():
+    # "Plant Brain menu" and "Plant Brain menu" when Broadsword = 0: with no Broadsword
+    # got this run, the plain one steps aside and the = 0 one comes up; with one, the plain.
+    from coach import Coach
+    route = {"name": "v", "steps": [
+        {"disc": 1, "type": "move", "title": "Forest", "lines": ["[Fight]", "[Menu]", "Walk on"]},
+        {"disc": 1, "type": "boss", "title": "Fight", "inside": True, "hp": [916], "screen": 257},
+        {"disc": 1, "type": "menu", "title": "Menu", "inside": True, "lines": ["Zidane: Optimize"]},
+        {"disc": 1, "type": "menu", "title": "Menu", "inside": True, "when": "Broadsword = 0",
+         "lines": ["Steiner: Optimize"]},
+        {"disc": 1, "type": "move", "title": "After", "lines": ["Walk"]}]}
+    c = Coach(routes_expand(route), learned_path=tmp_learned())
+    assert not c.active(2) and c.active(3)
+    c._goto(1, manual=True)
+    c.next_step()
+    assert c.step == 3, c.step                        # F8 from the fight: the = 0 version
+    c = Coach(routes_expand(route), learned_path=tmp_learned())
+    c.obtained.append((1, "Broadsword", 1, "1.1 Fight"))
+    assert c.active(2) and not c.active(3)
+    c._goto(1, manual=True)
+    c.next_step()
+    assert c.step == 2, c.step
+
+
+def test_two_steps_starting_on_one_screen_move_on_when_you_come_back_to_it():
+    # Evil Forest I and II both start at the Crash Site: out into the forest and back to
+    # the ship for Evil Forest I, then out at the Crash Site again is Evil Forest II.
+    from coach import Coach
+    route = {"name": "s", "steps": [
+        {"disc": 1, "type": "move", "title": "Forest I", "screen": 206,
+         "lines": ["1x Ether (chest)", "", "Vivi > Exit"]},
+        {"disc": 1, "type": "move", "title": "Forest II", "screen": 206, "lines": ["Run on"]},
+        {"disc": 1, "type": "move", "title": "Cavern", "screen": 300, "lines": ["Walk"]}]}
+    g = Game(tmp_learned())
+    g.coach = Coach(routes_expand(route), learned_path=tmp_learned())
+    g.screen(206, seconds=3)
+    assert g.coach.step == 0                          # first time here: Forest I, not past it
+    g.screen(250, seconds=2)
+    g.coach.pickup_event("Ether", source="screen")
+    g.read(5)
+    assert g.coach.step == 0                          # done: waits for Forest II's screen
+    g.screen(251, seconds=2)
+    g.screen(206, seconds=3)                          # back at the Crash Site
+    assert g.coach.step == 1, g.coach.step
+
+
+def test_a_screen_doesnt_take_a_branch_the_bag_says_no_to_or_one_already_passed():
+    # Baku Menu (when Leather Wrist = 1) starts in the Meeting Room. With no Leather Wrist
+    # got this run, walking in there (before or after Baku) mustn't bring it up.
+    from coach import Coach
+    route = {"name": "b", "steps": [
+        {"disc": 1, "type": "move", "title": "Forest", "screen": 206,
+         "lines": ["[Baku Menu]", "[Baku]", "", "Vivi > Exit"]},
+        {"disc": 1, "type": "menu", "title": "Baku Menu", "inside": True, "when": "Leather Wrist = 1",
+         "screen": 203, "lines": ["Zidane: Optimize"]},
+        {"disc": 1, "type": "boss", "title": "Baku", "inside": True, "hp": [202], "screen": 202},
+        {"disc": 1, "type": "move", "title": "Forest II", "screen": 250, "lines": ["Run"]}]}
+    for baku_won in (False, True):
+        g = Game(tmp_learned())
+        g.coach = Coach(routes_expand(route), learned_path=tmp_learned())
+        g.screen(206, seconds=3)
+        assert g.coach.step == 0
+        if baku_won:
+            g.coach.inside_done.add(2)
+        g.screen(205, seconds=2)
+        g.screen(203, seconds=3)                      # the Meeting Room
+        assert g.coach.step == 0, (baku_won, g.coach.step)
+        assert "count Leather Wrist = 1" not in g.coach.branch_choice
+
+
+def test_optimize_with_an_item_isnt_ticked_before_the_gear_is_read_for_the_step():
+    # Straight out of the Plant Brain fight the menu step comes up before the coach has
+    # taken everyone's gear for it: Zidane's Wrist alone mustn't tick (and stay ticked).
+    from memory import read_state
+    g, equip, ability, menu = menu_game()
+    g.coach = Coach(_copy.deepcopy(ROUTE), learned_path=tmp_learned())
+    i = g.coach.step
+    g.coach.steps[i] = {"disc": 1, "type": "menu", "title": "Plant Brain menu",
+                        "lines": ["Equipment:", "  Zidane: Optimize, Wrist", "  Steiner: Optimize"]}
+    g.coach._entry_step = None
+    equip("zidane", 2, "Wrist")                        # he already wears a Wrist
+    g.coach.equip_step = None                          # gear not taken for this step yet
+    done = g.coach._menu_progress(read_state(g.ram, g.a))[0]
+    assert 1 not in done and 1 not in g.coach.shop_ticked
+    menu(True)
+    v = g.read(3)
+    assert 1 not in v.done
+    equip("zidane", 0, "Mythril Dagger")               # Optimize changes his gear
+    v = g.read(2)
+    assert 1 in v.done
+    menu(False)                                        # (the fake game's memory is shared by the tests)
+
+
+def test_a_boss_from_another_screen_is_known_where_no_random_battles_happen():
+    # Black Waltz 3 is set to start on 501 but starts from the Bridge (503), where there
+    # are no random battles: its HP there means it's that fight. Where randoms can happen,
+    # the same HP from another screen is still a random battle.
+    import routes
+    for randoms, known in ((False, True), (True, False)):
+        learned = tmp_learned()
+        g = Game(learned)
+        g.coach = Coach(routes.expand({"name": "w", "steps": [
+            {"disc": 1, "type": "move", "title": "Ship", "lines": ["Walk"]},
+            {"disc": 1, "type": "boss", "title": "Black Waltz 3", "id": "bw3", "lines": ["Attack"],
+             "hp": [1128], "screen": 501},
+            {"disc": 1, "type": "move", "title": "After", "lines": ["Walk on"]}]}), learned_path=learned)
+        g.coach._enc_flag_seen.add(True)
+        g.screen(503, encounters=randoms)
+        start_fight(g, [11128, 32896], screen=None)
+        assert g.coach.battle_is_boss == known, randoms
+        assert (g.coach.step == 1) == known, (randoms, g.coach.step)
+        assert g.coach.learned.battle_screens("fight:bw3") == [] or not known   # nothing learned by itself
+
+
+def test_a_sell_line_shows_tabs_as_one_space_and_ticks_when_all_are_sold():
+    # "Sell: All Ethers,<tab>Phoenix Pinions,<tab>Eye Drops": on the panel the tabs are one
+    # space, nothing is added to the line, and it ticks once all three are sold.
+    g, bag, put = bag_game({"Ether": 5, "Phoenix Pinion": 1, "Eye Drops": 2, "Potion": 8})
+    g.coach.steps[g.coach.step] = {"disc": 2, "type": "menu", "title": "Lindblum Weapon Shop",
+                                   "lines": ["Sell:", "  All Ethers,	Phoenix Pinions,	Eye Drops",
+                                             "", "Buy:", "  2x Mage Masher"]}
+    v = g.read(2)
+    assert v.lines[1] == "  All Ethers, Phoenix Pinions, Eye Drops", repr(v.lines[1])
+    del bag["Ether"]; del bag["Phoenix Pinion"]; put()
+    v = g.read(2)
+    assert 1 not in v.done and v.lines[1] == "  All Ethers, Phoenix Pinions, Eye Drops", repr(v.lines[1])
+    del bag["Eye Drops"]; put()
+    v = g.read(2)
+    assert 1 in v.done
+
+def test_a_total_buy_counts_what_you_already_own():
+    # "6x Steepled Hats (Total)" with one stolen from Black Waltz 3: buying 5 is enough.
+    from syntax import shop_check
+    assert shop_check("Buy 6x Steepled Hats (Total)") == ("buy", [("Steepled Hat", 6, "total")])
+    assert shop_check("Buy 6x Steepled Hats") == ("buy", [("Steepled Hat", 6, "add")])
+    g, bag, put = bag_game({"Steepled Hat": 1, "Potion": 8})
+    g.coach.steps[g.coach.step] = {"disc": 1, "type": "menu", "title": "Lindblum Weapon Shop",
+                                   "lines": ["Buy:", "  6x Steepled Hats (Total)", "  1x Headgear"]}
+    g.read(2)
+    bag["Steepled Hat"] = 5; put()                     # four bought: five in all
+    assert 1 not in g.read(2).done
+    bag["Steepled Hat"] = 6; put()                     # five bought: six
+    assert 1 in g.read(2).done
+
+
+def test_the_last_sub_step_of_a_route_goes_back_to_its_step():
+    # A shop sub-step at the very end of the route: done, it goes back to its step.
+    from coach import Coach
+    g, bag, put = bag_game({"Cotton Robe": 3, "Potion": 2})
+    g.coach = Coach(routes_expand({"name": "e", "steps": [
+        {"disc": 1, "type": "move", "title": "Lindblum", "lines": ["Exit", "[Gate shop]"]},
+        {"disc": 1, "type": "move", "title": "Gate shop", "inside": True,
+         "lines": ["Sell:", "  All Cotton Robes", "Buy:", "  21x Potions"]}]}), learned_path=tmp_learned())
+    g.read(5)
+    assert g.coach.step == 1, g.coach.step
+    del bag["Cotton Robe"]; bag["Potion"] = 23; put()
+    g.read(8)
+    assert g.coach.step == 0 and 1 in g.coach.inside_done, (g.coach.step, g.coach.inside_done)
+
+
+def test_the_world_map_is_one_place_a_step_can_start_or_finish_on():
+    # Every world map screen (9000-9099) is "World map" (9000): picked as Finishes on, out
+    # onto it ends the step; as Starts on, reaching it brings the step up. Higher numbers,
+    # read before the game is loaded, are still no place.
+    from coach import Coach
+    from field_names import WORLD_MAP, field_name, place
+    assert place(9004) == WORLD_MAP and place(9099) == WORLD_MAP and place(602) == 602
+    assert place(9500) is None and place(0xFFFF) is None and place(0) is None
+    assert field_name(WORLD_MAP) == "World map (9000)"
+    route = {"name": "wm", "steps": [
+        {"disc": 1, "type": "move", "title": "Lindblum", "screen": 602, "end_screen": WORLD_MAP,
+         "lines": ["Exit > Chocobo Forest"]},
+        {"disc": 1, "type": "move", "title": "Chocobo Forest", "screen": 700, "lines": ["Find Mene"]},
+        {"disc": 1, "type": "move", "title": "Out again", "screen": WORLD_MAP, "lines": ["Run to the Grotto"]},
+        {"disc": 1, "type": "move", "title": "Grotto", "screen": 800, "lines": ["Walk"]}]}
+    g = Game(tmp_learned())
+    g.coach = Coach(routes_expand(route), learned_path=tmp_learned())
+    g.screen(602, seconds=3)
+    g.screen(9500, seconds=3)                         # (no place: nothing happens)
+    assert g.coach.step == 0
+    g.screen(9004, seconds=3)                         # out onto the world map: Lindblum finishes
+    assert g.coach.step == 1, g.coach.step
+    assert any("on World map (9000)" in e for e in g.coach.events)
+    g.screen(700, seconds=3)
+    g.screen(9007, seconds=3)                         # another world map screen: "Out again" starts there
+    assert g.coach.step == 2, g.coach.step
+
+
+def test_a_sub_step_left_with_a_key_doesnt_open_again_until_you_move_on():
+    # Mountain/Base starts on the screen you're standing on: F7 out of it to Dali must
+    # stay on Dali (it opened again at once before, three times in a row); walking to
+    # another screen and back opens it again.
+    from coach import Coach
+    route = {"name": "h", "steps": [
+        {"disc": 1, "type": "move", "title": "Dali", "screen": 400,
+         "lines": ["Walk", "[Mountain/Base]", "", "Up the mountain"]},
+        {"disc": 1, "type": "menu", "title": "Mountain/Base", "inside": True, "screen": 403,
+         "lines": ["Zidane: Optimize"]},
+        {"disc": 1, "type": "move", "title": "Lindblum", "screen": 550, "lines": ["Walk"]}]}
+    g = Game(tmp_learned())
+    g.coach = Coach(routes_expand(route), learned_path=tmp_learned())
+    g.screen(400, seconds=3)
+    g.screen(403, seconds=3)
+    assert g.coach.step == 1                          # on its screen: it comes up
+    g.coach.prev_step()                               # F7: not yet
+    g.read(30)
+    assert g.coach.step == 0, g.coach.step            # stays on Dali while you're still here
+    g.screen(402, seconds=2)
+    g.screen(403, seconds=3)                          # left and came back: it comes up again
+    assert g.coach.step == 1, g.coach.step
+
+
+def test_f8_writes_the_line_it_skipped_in_the_run_log():
+    from coach import Coach
+    route = {"name": "u", "steps": [
+        {"disc": 1, "type": "move", "title": "Grotto", "lines": ["[Entrance menu]", "Walk"]},
+        {"disc": 1, "type": "menu", "title": "Entrance menu", "inside": True,
+         "lines": ["Equipment:", "  Zidane: Coral Ring", "Front row Freya"]},
+        {"disc": 1, "type": "move", "title": "After", "lines": ["Walk"]}]}
+    g, equip, ability, menu = menu_game()
+    g.coach = Coach(routes_expand(route), learned_path=tmp_learned())
+    g.coach.goto(1)
+    g.read(3)
+    g.coach.next_step()
+    assert any(e.endswith('F8 on 1.1 Entrance menu: "Zidane: Coral Ring" not ticked') for e in g.coach.events), \
+        g.coach.events[-3:]
+    import report
+    logged = "04:10:41 " + next(e for e in g.coach.events if "not ticked" in e)   # (as in the run log)
+    out = report.run_summary(routes_expand(route), [logged])
+    assert out.get(1) == ['F8 pressed with "Zidane: Coral Ring" not ticked'], out
+    menu(False)
+
+
+def test_gear_lines_on_a_walk_step_stay_ticked_but_a_menu_step_keeps_checking():
+    # Burmecia: "Zidane: The Ogre", later "Zidane: Mage Masher, Leather Hat". On a walk
+    # step The Ogre stays ticked once the Mage Masher replaces it; on a menu step it doesn't.
+    for kind, stays in (("move", True), ("menu", False)):
+        g, equip, ability, menu = menu_game()
+        g.coach = Coach(_copy.deepcopy(ROUTE), learned_path=tmp_learned())
+        i = g.coach.step
+        g.coach.steps[i] = {"disc": 1, "type": kind, "title": "Burmecia",
+                            "lines": ["Zidane: The Ogre", "Walk on", "Zidane: Mage Masher, Leather Hat", "Walk"]}
+        g.coach._entry_step = None
+        equip("zidane", 0, "Dagger")
+        equip("zidane", 1, "Feather Hat")
+        menu(True)
+        v = g.read(3)
+        assert 0 not in v.done
+        equip("zidane", 0, "The Ogre")
+        v = g.read(3)
+        assert 0 in v.done, kind
+        equip("zidane", 0, "Mage Masher")
+        equip("zidane", 1, "Leather Hat")
+        v = g.read(3)
+        assert 2 in v.done, kind
+        assert (0 in v.done) == stays, (kind, v.done)
+        menu(False)                                    # (the fake game's memory is shared by the tests)
+
+
+def test_reaching_the_next_steps_screen_moves_on_with_lines_left_but_not_past_a_fight():
+    # Gizamaluke's Grotto with "1x Holy Bell" never ticked (a savestate skipped it): once
+    # Gizamaluke is won, reaching S. Gate/Bohden Gate (800), where Burmecia starts, moves
+    # on. Before Gizamaluke is won, the same screen doesn't.
+    from coach import Coach
+    route = {"name": "g", "steps": [
+        {"disc": 1, "type": "move", "title": "Gizamaluke's Grotto", "screen": 701,
+         "lines": ["1x Gizamaluke Bell", "1x Holy Bell", "[Gizamaluke]"]},
+        {"disc": 1, "type": "boss", "title": "Gizamaluke", "inside": True, "hp": [3000], "screen": 707},
+        {"disc": 1, "type": "move", "title": "Burmecia", "screen": 800, "lines": ["1x Multina Racket"]}]}
+    for won in (False, True):
+        g = Game(tmp_learned())
+        g.coach = Coach(routes_expand(route), learned_path=tmp_learned())
+        g.screen(701, seconds=3)
+        g.coach.pickup_event("Gizamaluke Bell", source="screen")
+        g.read(3)
+        if won:
+            g.coach.inside_done.add(1)
+        g.screen(707, seconds=2)
+        g.screen(800, seconds=3)                      # the trigger: Burmecia's start screen
+        assert g.coach.step == (2 if won else 0), (won, g.coach.step)
+
+
+def _grotto_route():
+    return routes_expand({"name": "gz", "steps": [
+        {"disc": 1, "type": "move", "title": "Grotto", "screen": 701,
+         "lines": ["[Black Mages]", "[After menu]", "1x Holy Bell", "[Gizamaluke]"]},
+        {"disc": 1, "type": "boss", "title": "Black Mages", "inside": True, "hp": [398], "screen": 703},
+        {"disc": 1, "type": "menu", "title": "After menu", "inside": True, "lines": ["Zidane: Optimize"]},
+        {"disc": 1, "type": "boss", "title": "Gizamaluke", "inside": True, "hp": [3000], "screen": 707},
+        {"disc": 1, "type": "move", "title": "Burmecia", "screen": 800, "lines": ["Walk"]}]})
+
+
+def test_a_save_loaded_undoes_only_the_sub_steps_done_after_it():
+    # A savestate from just before Gizamaluke: Black Mages and the menu after it were done
+    # before it, so they stay done; one done after the save's moment comes undone.
+    from coach import Coach
+    c = Coach(_grotto_route(), learned_path=tmp_learned())
+    c._igt_last = 7000
+    c._sub_done(1)                                    # Black Mages, before the save
+    c._igt_last = 7300
+    c._sub_done(2)                                    # the menu after it, before the save
+    c._igt_last = 8400
+    c._sub_done(3)                                    # Gizamaluke, after the save
+    c._dropped_to(7707, 8412)                         # the savestate: back to 7707
+    assert c.inside_done == {1, 2}, c.inside_done
+
+
+def test_a_boss_too_big_to_read_is_the_fight_whose_room_its_in():
+    # After the load, Black Mages counted as still to do; Gizamaluke (65535: too big to
+    # read) in its own room, where no random battles happen, is Gizamaluke, not Black Mages.
+    from coach import Coach
+    g = Game(tmp_learned())
+    g.coach = Coach(_grotto_route(), learned_path=tmp_learned())
+    g.coach._enc_flag_seen.add(True)
+    g.screen(701, seconds=3)
+    g.screen(707, encounters=False)
+    start_fight(g, [65535], screen=None)
+    assert g.coach.battle_is_boss and g.coach.step == 3, g.coach.step
+
+
+def test_winning_a_fight_sub_step_puts_the_ones_before_it_behind_you():
+    # F8 through the Grotto's sub-steps, then a savestate from before them all: Black Mages
+    # and the menus count as not done again. Winning Gizamaluke puts them behind you, so
+    # reaching Burmecia's start screen (800) moves on.
+    from coach import Coach
+    g = Game(tmp_learned())
+    g.coach = Coach(_grotto_route(), learned_path=tmp_learned())
+    g.coach._enc_flag_seen.add(True)
+    g.screen(701, seconds=3)
+    assert not g.coach.inside_done                    # (as after the load)
+    g.screen(707, encounters=False)
+    g.fight([65535], 20, screen=None)                 # Gizamaluke won
+    assert {1, 2, 3} <= g.coach.inside_done, g.coach.inside_done
+    assert g.coach.step == 0
+    g.screen(800, seconds=3)
+    assert g.coach.step == 4, g.coach.step
+
+
+def test_a_gear_line_on_a_walk_step_waits_for_the_menu_called_above_it():
+    # Burmecia: Zidane already wears The Ogre when the step comes up, but "[World Map menu]"
+    # above "Zidane: The Ogre" swaps him to a Dagger first. The line ticks only once that
+    # menu is done and The Ogre is back on.
+    g, equip, ability, menu = menu_game()
+    g.coach = Coach(routes_expand({"name": "b", "steps": [
+        {"disc": 1, "type": "move", "title": "Burmecia",
+         "lines": ["1x Multina Racket", "[World Map menu]", "Zidane: The Ogre", "Walk on"]},
+        {"disc": 1, "type": "menu", "title": "World Map menu", "inside": True, "lines": ["Zidane: Dagger"]},
+        {"disc": 1, "type": "move", "title": "After", "lines": ["Walk"]}]}), learned_path=tmp_learned())
+    equip("zidane", 0, "The Ogre")
+    v = g.read(3)
+    assert g.coach.step == 0 and 2 not in v.done, v.done   # worn already: not it yet
+    g.coach.inside_done.add(1)                         # the World Map menu done...
+    equip("zidane", 0, "Dagger")                       # ...with the Dagger on
+    v = g.read(3)
+    assert 2 not in v.done
+    equip("zidane", 0, "The Ogre")
+    v = g.read(3)
+    assert 2 in v.done, v.done
+    equip("zidane", 0, "Mage Masher")                  # later on the step: stays ticked
+    assert 2 in g.read(3).done
+    menu(False)
+
+
+def _key_ram(block_hex="", table=True):
+    # A fake US game: the key item name table after the item names, and the key item block
+    # just past the bag holding these bytes.
+    from memory import FakeRam
+    from items import KEY_ITEM_ORDER, ff9_bytes
+    ram = FakeRam()
+    names = b"".join(ff9_bytes(n) + b"\xff" for n in KEY_ITEM_ORDER + ["none", "none"])
+    if table:
+        ram.mem[0x06ADAB:0x06ADAB + 1 + len(names)] = b"\xff" + names
+    blk = bytes.fromhex(block_hex) if block_hex else b""
+    ram.mem[0x08B9C4:0x08B9C4 + len(blk)] = blk
+    ram.snapshot = lambda: bytes(ram.mem)
+    return ram
+
+
+DISC3_KEY_BLOCK = "441515000100000001000000000000000000"     # your disc 3 save, read from the game
+WORLD_MAP_KEY_BLOCK = "011051000000000001000000000000000000" # the world map save
+
+
+def test_key_items_are_read_from_the_block_past_the_bag():
+    # Both of your saves: what the Key Items screen listed is what's read.
+    from memory import Addresses, read_state
+    a = Addresses.from_config({"addresses": {"inventory": "0x08B7C4"}})
+    assert a.key_items_at == 0x08B9C4 and len(a.key_item_ids) == 61
+    st = read_state(_key_ram(DISC3_KEY_BLOCK), a)
+    assert st.key_items == {"Silver Pendant", "Memory Earring", "Falcon Claw", "Desert Star", "Ticket",
+                            "Continental Map", "World Map", "Moogle's Flute", "Gate Pass", "Master Hunter"}, st.key_items
+    st = read_state(_key_ram(WORLD_MAP_KEY_BLOCK), a)
+    assert st.key_items == {"Silver Pendant", "Ticket", "Continental Map", "Moogle's Flute", "Kupo Nut",
+                            "Master Hunter"}, st.key_items
+    other = Addresses.from_config({"addresses": {"inventory": "0x08B000"}})    # another release:
+    assert other.key_items_at == 0x08B200 and other.key_item_ids == {}       # not built in
+
+
+def test_memory_setup_reads_every_key_item_from_the_game():
+    import finder
+    from items import KEY_ITEM_IDS, KEY_ITEM_ORDER, read_key_item_order
+    ram = _key_ram(WORLD_MAP_KEY_BLOCK)
+    assert read_key_item_order(ram.snapshot()) == KEY_ITEM_ORDER + ["none", "none"]
+    said = []
+    real = finder.__dict__.get("print")
+    finder.print = lambda *x, **k: said.append(" ".join(map(str, x)))
+    try:
+        found = finder.find_key_items(ram, {"addresses": {"inventory": "0x08B7C4"}})
+    finally:
+        finder.__dict__.pop("print", None) if real is None else setattr(finder, "print", real)
+    assert found == {"key_items_at": "0x08B9C4", "key_item_ids": KEY_ITEM_IDS}, found
+    assert any("all 61 key items" in s for s in said) and any("Kupo Nut" in s for s in said), said
+
+
+def test_without_the_name_table_the_key_items_screen_teaches_them():
+    import finder
+    ram = _key_ram("00000000000000000000000000000000", table=False)
+    for bit in (24, 28, 90):                           # Gizamaluke Bell, Holy Bell, Blue Stone
+        ram.mem[0x08B9C4 + (bit >> 3)] |= 1 << (bit & 7)
+    answers = iter(["Blue Ston, Gizamaluke Bell",      # one missing: told so
+                    "Gizamaluke Bell, Holy Bell, Blue Stone"])
+    said = []
+    real = {k: finder.__dict__.get(k) for k in ("input", "print")}
+    finder.input, finder.print = (lambda prompt="": next(answers)), (lambda *x, **k: said.append(" ".join(map(str, x))))
+    try:
+        found = finder.find_key_items(ram, {"addresses": {"inventory": "0x08B7C4"}})
+    finally:
+        for k, v in real.items():
+            finder.__dict__.pop(k, None) if v is None else setattr(finder, k, v)
+    assert found == {"key_items_at": "0x08B9C4",
+                     "key_item_ids": {"Gizamaluke Bell": [24], "Holy Bell": [28], "Blue Stone": [90]}}, found
+    assert any("has 3 key items, you typed 2" in s for s in said), said
+
+
+def test_key_items_read_from_memory_tick_their_pickup_lines():
+    # "1x Holy Bell" ticks from memory: no "Received" message needed (a savestate past it,
+    # or a missed read), and stays ticked once the bell is used on its door.
+    from memory import read_state
+    from items import KEY_ITEM_IDS
+    g = Game(tmp_learned())
+    g.a.key_items_at, g.a.key_item_ids = 0x0D1000, {k: list(v) for k, v in KEY_ITEM_IDS.items()}
+    g.coach = Coach(routes_expand({"name": "k", "steps": [
+        {"disc": 1, "type": "move", "title": "Grotto", "lines": ["1x Gizamaluke Bell", "1x Holy Bell", "Walk on"]},
+        {"disc": 1, "type": "move", "title": "Burmecia", "lines": ["Walk"]}]}), learned_path=tmp_learned())
+    st = read_state(g.ram, g.a)
+    assert st.key_items == set() and {"Gizamaluke Bell", "Holy Bell"} <= st.key_known
+    assert 1 not in g.read(3).done
+    n = KEY_ITEM_IDS["Holy Bell"][0]
+    g.ram.mem[0x0D1000 + (n >> 3)] |= 1 << (n & 7)      # you have it now
+    v = g.read(3)
+    assert 1 in v.done and 0 not in v.done, v.done
+    g.ram.mem[0x0D1000 + (n >> 3)] = 0                    # used on its door: stays ticked
+    assert 1 in g.read(3).done
+    m = KEY_ITEM_IDS["Gizamaluke Bell"][1]                # the second Gizamaluke Bell entry counts too
+    g.ram.mem[0x0D1000 + (m >> 3)] |= 1 << (m & 7)
+    assert 0 in g.read(3).done
+    g.a.key_items_at, g.a.key_item_ids = None, {}         # (in case the fake game's addresses are shared)
+
+
+def test_changing_starts_on_to_the_room_you_are_in_moves_on_without_walking_again():
+    # Dali set to start on 351, but you woke up in the inn's other room (352): nothing. Change
+    # Dali's Starts on to 352 in the editor while standing there: on to Dali, no walking.
+    import copy
+    from coach import Coach
+    route = {"name": "d", "steps": [
+        {"disc": 1, "type": "move", "title": "Ice Cavern", "screen": 301,
+         "lines": ["1x Tent (On the ledge)", "", "Stutter step to Dali"]},
+        {"disc": 1, "type": "move", "title": "Dali", "screen": 351, "lines": ["Walk"]},
+        {"disc": 1, "type": "move", "title": "After", "screen": 400, "lines": ["Walk"]}]}
+    g = Game(tmp_learned())
+    g.coach = Coach(routes_expand(route), learned_path=tmp_learned())
+    g.screen(301, seconds=3)
+    g.screen(9000, seconds=2)
+    g.screen(352, seconds=3)
+    assert g.coach.step == 0                          # 352 isn't Dali's 351
+    edited = copy.deepcopy(route)
+    edited["steps"][1]["screen"] = 352
+    g.coach.reload_route(routes_expand(edited))       # saved in the editor, still in the inn
+    g.read(20)
+    assert g.coach.step == 1, g.coach.step
+
+
+def test_the_editor_knows_which_way_the_run_in_progress_goes():
+    # From the coach's progress file: no Broadsword got this run, so the "Broadsword = 0"
+    # Plant Brain menu is this run's, the plain one isn't; with one stolen, the other way round.
+    import json as _j
+    import report
+    route = {"name": "w", "steps": [
+        {"disc": 1, "type": "move", "title": "Forest", "lines": ["[Menu]", "Walk"]},
+        {"disc": 1, "type": "menu", "title": "Menu", "inside": True, "lines": ["Zidane: Optimize"]},
+        {"disc": 1, "type": "menu", "title": "Menu", "inside": True, "when": "Broadsword = 0",
+         "lines": ["Steiner: Optimize"]},
+        {"disc": 1, "type": "move", "title": "After", "lines": ["Walk"]}]}
+    prog = Path(tempfile.mkdtemp()) / "w.json"
+    assert report.run_way(route, prog) == {}           # no run: nothing to show
+    prog.write_text(_j.dumps({"step": 0, "branches": {}, "obtained": []}))
+    assert report.run_way(route, prog) == {1: False, 2: True}
+    prog.write_text(_j.dumps({"step": 0, "branches": {}, "obtained": [[1, "Broadsword", 1, "1 Forest"]]}))
+    assert report.run_way(route, prog) == {1: True, 2: False}
+
+
+def test_a_save_loaded_in_the_middle_of_a_fight_isnt_a_win():
+    # In the Gizamaluke fight a savestate from before it is loaded: the fight goes away, but
+    # it wasn't won. Fighting it again is recognised as Gizamaluke, and that win counts.
+    from coach import Coach
+    g = Game(tmp_learned())
+    g.coach = Coach(_grotto_route(), learned_path=tmp_learned())
+    g.coach._enc_flag_seen.add(True)
+    t = 60 * 60 * 2
+    for _ in range(40):                                # the game timer seen counting
+        t += 6
+        igt(g, t)
+        g.read()
+    g.screen(701, seconds=3)
+    g.screen(707, encounters=False)
+    start_fight(g, [65535], screen=None)
+    assert g.coach.step == 3 and g.coach.battle_is_boss
+    igt(g, t - 2000)                                   # the savestate: from before the fight
+    g.code(False)
+    g.ram.write(g.a.enemy_hp[0], 0)
+    g.read(15)
+    assert 3 not in g.coach.inside_done, g.coach.inside_done
+    assert g.coach.step == 0, g.coach.step
+    assert any("not a win" in e for e in g.coach.events), g.coach.events[-4:]
+    for k in range(20):
+        igt(g, t - 2000 + k * 6)
+        g.read()
+    g.screen(707, encounters=False)
+    g.fight([65535], 20, screen=None)                  # the fight again
+    assert 3 in g.coach.inside_done, g.coach.events[-4:]
+
+
+def test_the_app_is_one_window_with_the_coach_inside():
+    # Coach, Route editor, Memory setup and Help are pages of one window; the coach runs in it
+    # (its panel a window of the app) and starts and stops again and again; the editor's
+    # keys sleep while another page shows; Compare is a panel inside the editor.
+    import json as _j
+    import time as _t
+    import tkinter as tk
+    from tkinter import ttk
+    import window
+    root = tk.Tk()
+    try:
+        app = window.App(root)
+        root.update()
+        assert list(app.pages) == ["coach", "editor", "setup", "help"]
+        def tops():
+            return [w for w in root.winfo_children() if isinstance(w, tk.Toplevel) and w.winfo_viewable()]
+        assert tops() == []
+        app.show("setup")
+        root.update()
+        assert not app.editor.shown()                  # Delete in Memory setup can't delete a step
+        n = len(app.editor.route["steps"])
+        root.event_generate("<Delete>")
+        root.update()
+        assert len(app.editor.route["steps"]) == n
+        app.show("editor")
+        root.update()
+        assert app.editor.shown()
+        import routes as _routes
+        if len(_routes.names()) > 1:                   # (Compare needs a second route)
+            app.editor.open_compare()
+            root.update()
+            assert app.editor.cmp_win.winfo_toplevel() is root and tops() == []
+            app.editor._cmp_close()
+        for _ in range(2):
+            app.session.start(simulate=True)
+            end = _t.time() + 1.5
+            while _t.time() < end:
+                root.update()
+                _t.sleep(0.02)
+            assert app.session.running and app.session.overlay.root.master is root
+            app.session.stop()
+            root.update()
+            assert not app.session.running and app.session.overlay is None
+        app.editor.saved = _j.dumps(app.editor.route, sort_keys=True)   # (nothing to save)
+    finally:
+        try:
+            app.session.stop()
+        except Exception:
+            pass
+        root.destroy()
+
 
 if __name__ == "__main__":
     import inspect

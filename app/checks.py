@@ -4,6 +4,8 @@ once all of its lines are done."""
 
 from __future__ import annotations
 
+import re
+
 from memory import GameState
 from syntax import (_OPTIMIZE_LINE, config_check, instructions_after_checks, is_optional, menu_checks,
                     pickup_targets, row_check, sell_except, shop_check, steal_targets, substep_call)
@@ -15,7 +17,7 @@ class ChecksMixin:
     """Lines that tick: steals, pickups, shopping, equipment, abilities, rows, config.
     Mixed into Coach: works on its state."""
 
-    # -- steals (seen on screen by screen.py) -------------------------------
+    # -- steals (from the bag) ---------------------------------------------------
     def _steal_lines(self) -> list[tuple[int, str | None]]:
         s = self.current()
         if s["type"] != "boss":
@@ -49,23 +51,14 @@ class ChecksMixin:
         gained = {i: n - prev.get(i, 0) for i, n in state.items.items() if n > prev.get(i, 0)}
         if len(gained) > 2:
             return                      # the whole bag changing at once: a load, not a steal
-        from screen import ITEMS
+        from items import ITEMS
         for i, d in gained.items():
             for _ in range(d):
                 if i < len(ITEMS):
                     self.steal_event("stole", ITEMS[i], source="bag")
 
-    def wants_steal_check(self) -> bool:
-        """True while a boss fight is on with a steal still to confirm."""
-        if not (self.in_battle and self.battle_is_boss):
-            return False
-        if self._steal_prev is not None:
-            return False                # read from the bag instead
-        return len(self._steals_done()) < len(self._steal_lines())
-
     def steal_event(self, kind: str, item: str | None, source: str = "screen") -> None:
-        """What screen.py read: ('stole', item) or ('failed', None), or a steal seen in the
-        bag. With the bag set up, only the bag counts."""
+        """A steal seen in the bag: ('stole', item)."""
         if source == "screen" and self._steal_prev is not None:
             return
         if not (self.in_battle and self.battle_is_boss) or not self._steal_lines():
@@ -83,7 +76,7 @@ class ChecksMixin:
             wanted = [it for i, it in self._steal_lines() if it and i not in self._steals_done()]
             self.steal_note = (f"Stole {item}" + (f", still need {wanted[0]}" if wanted else ""), "warn")
 
-    # -- pickups (seen on screen by screen.py) ------------------------------
+    # -- pickups (from the bag) ------------------------------------------------
     def _pickups_done(self, i: int) -> list[int]:
         """Pickup lines on walk step i whose items have all been seen (named items
         first, in order; then lines that take any item)."""
@@ -147,23 +140,12 @@ class ChecksMixin:
                 out.append(i)
         return out
 
-    def wants_pickup_check(self) -> bool:
-        """True on the field while a nearby walk step still has something to pick up."""
-        if self.in_battle or not self._pickup_window():
-            return False
-        if self._bag_prev is not None and self._gil_prev is not None:
-            # Items and gil come from memory; only key items (not in the bag) need the screen.
-            from screen import ITEMS
-            want = {x for _, items in pickup_targets(_pickup_lines(self.current())) for x in items}
-            return any(x not in ITEMS and x not in ("Gil", "*") for x in want)
-        return True
-
     def pickup_event(self, item: str, source: str = "screen") -> None:
-        """screen.py read "Received <item>!" on the field, or the item turned up in the bag.
-        With the bag set up, items are taken from it only (the screen still does gil)."""
+        """An item (or gil) turned up in the bag: a pickup for the step that names it. Key items
+        aren't in the bag: they tick from the key item block (_menu_progress)."""
         if self.in_battle:
             return
-        from screen import ITEMS
+        from items import ITEMS
         in_bag = item in ITEMS                 # key items (Beautiful Potion, ...) aren't in the bag
         if source == "screen" and (self._gil_prev is not None if item == "Gil"
                                    else (self._bag_prev is not None and in_bag)):
@@ -215,7 +197,7 @@ class ChecksMixin:
             # "Sell all except ...": done once the bag holds nothing else
             if state.items is None:
                 return None
-            from screen import ITEMS
+            from items import ITEMS
             keep_ids = {ITEMS.index(k) for k in keep if k in ITEMS}
             return all(n <= 0 or i in keep_ids or i >= len(ITEMS) for i, n in state.items.items())
         c = menu_checks(line)
@@ -225,7 +207,7 @@ class ChecksMixin:
         who = _record_of(who)
         checks = []
         if eq and who in state.equips:
-            from screen import ITEMS
+            from items import ITEMS
             on = state.equips[who]
             for n, off in eq:
                 if n.startswith("slot:"):              # "-Armor": nothing in that slot
@@ -245,23 +227,55 @@ class ChecksMixin:
             return [], None, 0
         done, todo, n = [], None, 0
         if self.tick_step != self.step:
-            self.tick_step, self.shop_ticked = self.step, set()
+            self.tick_step, self.shop_ticked, self.optimize_base = self.step, set(), {}
         picked = set(self._pickups_done(self.step))
-        pick_lines = {i for i, _ in pickup_targets(_pickup_lines(s))}
+        pick_items = dict(pickup_targets(_pickup_lines(s)))
+        pick_lines = set(pick_items)
         subs = {(self.steps[j].get("title") or "").strip().lower(): j for j in self.inside_of(self.step)}
-        for i, line in enumerate(check_lines(s)):
+        lines = check_lines(s)
+        sub_ahead = False                              # a sub-step called above this line still to do
+        for i, line in enumerate(lines):
             call = substep_call(line)
             if call:                                   # "[Treno Shop]": done once that sub-step is
                 j = subs.get(call.lower())
                 st = None if j is None else j in self.inside_done
+                sub_ahead = sub_ahead or st is False
             elif i in pick_lines:
-                st = i in picked
+                st = i in picked or i in self.shop_ticked
+                keys = pick_items.get(i) or []
+                if (not st and keys and state.key_items is not None
+                        and all(k in state.key_known for k in keys) and all(k in state.key_items for k in keys)):
+                    st = True                          # key items read from memory: you have it
+                    self.shop_ticked.add(i)            # (stays ticked once a bell is used on its door)
             elif i in self.shop_ticked:
                 st = True
+            elif _OPTIMIZE_LINE.match(line.strip()):
+                st = self._optimize_state(i, lines, done, state)
+                if st:
+                    self.shop_ticked.add(i)            # stays ticked
+            elif _OPTIMIZE_AND.match(line.strip()):
+                # "Zidane: Optimize, Wrist": the Wrist on (he may wear one already) AND an Optimize
+                items = self._menu_line_state(line, state)
+                opt = self._optimize_state(i, lines, done, state, use_note=False)
+                if opt is None:                        # his gear not read for this step yet:
+                    st = None if items is None else False   # not done (he may wear a Wrist already)
+                else:
+                    st = opt if items is None else (items and opt)
+                if st:
+                    self.shop_ticked.add(i)            # stays ticked
             else:
                 st = self._menu_line_state(line, state)
+                walk_gear = s["type"] == "move" and bool(menu_checks(line) or row_check(line))
+                if st and walk_gear and sub_ahead:
+                    # A menu sub-step called above it changes gear first (Burmecia's World Map
+                    # menu before "Zidane: The Ogre"): worn already isn't it yet.
+                    st = False
                 if st and (shop_check(line) or sell_except(line) or _OPTIMIZE_LINE.match(line.strip())):
                     self.shop_ticked.add(i)            # stays ticked
+                elif st and walk_gear:
+                    # On a walk step gear changes as you go ("Zidane: The Ogre", later "Zidane:
+                    # Mage Masher"): once done it stays ticked. A menu step keeps checking.
+                    self.shop_ticked.add(i)
             if st is None:
                 continue
             n += 1
@@ -271,11 +285,43 @@ class ChecksMixin:
                 todo = i                               # "(if stolen)" lines don't hold the step up
         return done, todo, n
 
+    def _optimize_state(self, i: int, lines: list[str], done: list[int], state: GameState,
+                        use_note: bool = True) -> bool | None:
+        """ "Zidane: Optimize". With the gear written under it ("# The Tower / Coronet /
+        ..."): done once that's what he wears. Without: once his gear changes after the
+        lines before it for him are done, so taking a Power Belt off first isn't it."""
+        who = (_OPTIMIZE_LINE.match(lines[i].strip()) or _OPTIMIZE_AND.match(lines[i].strip())).group(1).lower()
+        if who not in state.equips or self.equip_step != self.step:
+            return None
+        wanted = _gear_note(lines, i) if use_note else None
+        if wanted:
+            from items import ITEMS
+            on = set(state.equips[who])
+            # Every item the note names is worn ("A or B": either); its slot doesn't matter,
+            # as notes don't always list all five ("# Mage's Hat / Magic Armlet / Cloak").
+            return all(any(ITEMS.index(n) in on for n in names) for names in wanted
+                       if names not in (None, "-"))
+        earlier = [k for k in range(i) if _for_character(lines[k], who)]
+        if any(k not in done and k not in self.shop_ticked for k in earlier):
+            return False                               # his lines above it first
+        if i not in self.optimize_base:
+            self.optimize_base[i] = list(state.equips[who]) if earlier else list(self.equip_base.get(who) or [])
+        return state.equips[who] != self.optimize_base[i]
+
     def _enter_called_sub(self, state: GameState) -> None:
-        """A walk or menu sub-step the step calls ("[Side room]") comes up by itself once
-        every line written above the call is done; one with its own screen typed in the route
-        (a shop) only when you're there. (Fight sub-steps come up with their fight.)"""
+        """A walk or menu sub-step the step calls ("[Side room]"): one with a screen it starts
+        on (picked under Starts on in the editor, or taught with the Learn key) comes up when
+        you reach that screen; one without comes up as soon as every line written above the
+        call is done. (Fight sub-steps come up with their fight.)"""
         s = self.current()
+        hold = self._auto_hold
+        if hold is not None:                           # a key put you here: wait for a change
+            done_n = len(self._menu_progress(state)[0])
+            if hold[1] is None:
+                self._auto_hold = hold = (hold[0], done_n)
+            if self.field_cur == hold[0] and done_n <= hold[1]:
+                return
+            self._auto_hold = None
         subs = {(self.steps[j].get("title") or "").strip().lower(): j for j in self._pending_inside(self.step)}
         lines = check_lines(s)
         for k, line in enumerate(step_lines(s)):
@@ -285,8 +331,9 @@ class ChecksMixin:
                 continue
             if self.steps[j]["type"] == "boss":
                 return                                 # its fight brings it up
-            if self.steps[j].get("screen") is not None:
-                if self.field_cur == int(self.steps[j]["screen"]):
+            start = self._start_screen(j)
+            if start is not None:
+                if self.field_cur == start:
                     self._goto(j, manual=False, why=f"in {self.steps[j].get('title')}")
                 return                                 # otherwise reaching its screen brings it up
             done = set(self._menu_progress(state)[0])
@@ -306,18 +353,19 @@ class ChecksMixin:
     def _bag_pickups(self, state: GameState, now: float) -> None:
         """Pickups from the bag: an item this step wants turning up in it (a chest, a
         hidden item) counts, read straight from memory, so it can't be missed on screen.
-        Not straight after a fight (spoils) or with the menu open (synthesising)."""
+        Not with the menu open (synthesising), and nothing straight after a fight: that's
+        the fight's spoils, which never count as a pickup."""
         gil_prev, self._gil_prev = self._gil_prev, state.gil
         if (gil_prev is not None and state.gil is not None and not self.in_battle
                 and now - self._battle_end_at >= BAG_AFTER_FIGHT and not state.menu_vote
                 and not self._has_sell_lines() and 0 < state.gil - gil_prev < GIL_PICKUP_MAX):
             self.pickup_event("Gil", source="bag")     # walk steps only: shops sell for gil
         prev, self._bag_prev = self._bag_prev, (dict(state.items) if state.items is not None else None)
-        if prev is None or state.items is None or self.in_battle:
+        if prev is None or state.items is None or self.in_battle or state.menu_vote:
             return
-        if now - self._battle_end_at < BAG_AFTER_FIGHT or state.menu_vote:
-            return
-        from screen import ITEMS
+        if now - self._battle_end_at < BAG_AFTER_FIGHT:
+            return                      # spoils (a Hi-Potion after Sealion isn't Dali's Hi-Potion)
+        from items import ITEMS
         gained = {i: n - prev.get(i, 0) for i, n in state.items.items() if n > prev.get(i, 0)}
         if len(gained) > 2:
             return                      # the whole bag changing at once: a load, not a pickup
@@ -346,10 +394,15 @@ class ChecksMixin:
 
     def _shop_line_state(self, line: str, state: GameState) -> bool | None:
         """Buy/Sell lines, checked against the bag. None if the line can't be checked."""
+        parts = self._shop_parts(line, state)
+        return None if parts is None else all(ok for _, ok in parts)
+
+    def _shop_parts(self, line: str, state: GameState) -> list[tuple[str, bool]] | None:
+        """Each item of a Buy/Sell line and whether it's done. None if it can't be checked."""
         c = shop_check(line)
         if c is None or state.items is None or self.shop_step != self.step:
             return None
-        from screen import ITEMS
+        from items import ITEMS
         kind, parts = c
         ok = []
         for name, n, rule in parts:
@@ -361,11 +414,12 @@ class ChecksMixin:
                 ok.append(now < base or base == 0)
             elif rule == "less":                       # "Sell 2 Cotton Robe": two fewer than before
                 ok.append(now <= max(0, base - n))
-            elif rule == "total":                      # "(4 if you stole one)": own this many
-                ok.append(peak >= n)
+            elif rule == "total":                      # "(Total)", "(4 if you stole one)": own this many
+                worn = sum(g.count(i) for g in (state.equips or {}).values())   # (a stolen one put on counts)
+                ok.append(max(peak, now + worn) >= n)
             else:
                 ok.append(peak - base >= n)
-        return all(ok)
+        return [(name, k) for (name, _, _), k in zip(parts, ok)]
 
     def _track_menu(self, state: GameState) -> None:
         """Move on from a walk or menu step once every line the coach can check is done:
@@ -374,24 +428,26 @@ class ChecksMixin:
         straight away if it's only pickups and shopping."""
         s = self.current()
         if self.in_battle or s["type"] == "boss":
-            self.menu_opened_on = None
-            return
+            return                                     # (a fight doesn't undo the menu used on the step)
         # Only something done while on this step moves it on: a step that was already
         # finished when you came back to it (F7, or a savestate from before) stays put.
         if self._entry_step != self.step:
             self._entry_step = self.step
-            self.menu_opened_on = None
+            if self._back_to_parent != self.step:
+                self.menu_opened_on = None             # (back from a sub-step: the menu used before counts)
             # Back from a fight in the middle of this step: what was done before it counts.
             self._entry_done = 0 if self._back_to_parent == self.step else len(self._menu_progress(state)[0])
             self._back_to_parent = None
             return
+        if state.menu_vote:
+            self.menu_opened_on = self.step            # (noted even with sub-steps still to come)
         if self._pending_inside(self.step):
             self._enter_called_sub(state)              # a "[Side room]" whose turn has come
             return                                     # a sub-step in the middle of it still to come
         if not any(menu_checks(l) or _OPTIMIZE_LINE.match(l.strip()) or row_check(l) or config_check(l)
                    for l in check_lines(s)):
             done, todo, n = self._menu_progress(state)
-            if n and todo is None and len(done) > self._entry_done and self.step + 1 < len(self.steps) \
+            if n and todo is None and len(done) > self._entry_done and self._has_somewhere_next() \
                     and not (s["type"] == "move" and instructions_after_checks(step_lines(s))):
                 # (more to do written after the last ticked line: the next screen or F8 moves on)
                 self._step_done("all lines done")
@@ -403,21 +459,31 @@ class ChecksMixin:
             return
         if self.menu_opened_on == self.step:              # the menu was used here and is closed
             done, todo, n = self._menu_progress(state)
-            if n and todo is None and len(done) > self._entry_done and self.step + 1 < len(self.steps) \
+            if n and todo is None and len(done) > self._entry_done and self._has_somewhere_next() \
                     and not (s["type"] == "move" and instructions_after_checks(step_lines(s))):
                 # (more to do written after the last ticked line: the next screen or F8 moves on)
                 self._step_done("all lines done, menu closed")
 
-    def _step_done(self, why: str) -> None:
+    def _has_somewhere_next(self) -> bool:
+        """A step after this one to move on to, or (for a sub-step) its step to go back to:
+        a sub-step at the very end of the route still goes back to its step."""
+        return self.step + 1 < len(self.steps) or (self.is_inside(self.step) and self.parent_of(self.step) is not None)
+
+    def _step_done(self, why: str, finished_here: bool = False) -> None:
         """A walk or menu step finished by itself: on to the next step, or for a sub-step
         (a step in the middle of the one above), back to that step."""
         if self.is_inside(self.step) and self.parent_of(self.step) is not None:
             parent = self.parent_of(self.step)
-            self.inside_done.add(self.step)
+            self._sub_done(self.step)
             self._goto(parent, manual=False, why=why + ", back to its step")
             self._back_to_parent = parent
             return
-        self._goto(self._next_index(self.step), manual=False, why=why)
+        nxt = self._next_index(self.step)
+        start = self._start_screen(nxt) if nxt != self.step and self.steps[nxt]["type"] != "boss" else None
+        if start is not None and self.field_cur != start and not finished_here:
+            return                                     # done: the next step comes up on its own screen
+                                                       # (not on reaching its Finishes on: it ends there)
+        self._goto(nxt, manual=False, why=why)
 
     def _needs_f8(self, state: GameState) -> bool:
         """A walk or menu step the coach can't move on from by itself yet: nothing on it it
@@ -445,3 +511,44 @@ class ChecksMixin:
         if nxt["type"] == "boss" and self._fight_known(k):
             return False
         return True
+
+
+# "Zidane: Optimize, Wrist" / "Zidane: Optimize (The Ogre / ...), Coral Ring": Optimize, then more
+_OPTIMIZE_AND = re.compile(r"^(zidane|vivi|garnet|steiner|freya|quina|eiko|amarant):\s*optimi[sz]e\s*"
+                           r"(?:\([^)]*\)\s*)?,\s*\S", re.I)
+
+
+def _gear_note(lines: list[str], i: int) -> list | None:
+    """The gear written under an Optimize line ("# The Tower / Coronet / N-Kai Armlet /
+    Power Vest / Rebirth Ring"): per slot, the items that count (None: not named, or
+    not an item we know; "-": empty). None if there's no such note."""
+    from items import ITEMS
+    for line in lines[i + 1:]:
+        if not line.strip():
+            continue
+        text = line.strip()
+        if not text.startswith("#"):
+            return None
+        parts = [x.strip() for x in text.lstrip("#").split("/")]
+        if len(parts) < 3:
+            return None
+        out = []
+        for part in parts[:5]:
+            if part in ("-", ""):
+                out.append("-")
+                continue
+            names = [n.strip() for n in part.split(" or ")]
+            known = [n for n in names if n in ITEMS]
+            out.append(known or None)
+        return out if any(x is not None for x in out) else None
+    return None
+
+
+def _for_character(line: str, who: str) -> bool:
+    """A menu line about this character ("Zidane: -Power Belt", "Zidane: Optimize")."""
+    c = menu_checks(line)
+    if c is not None:
+        return _record_of(c[0]) == who
+    m = _OPTIMIZE_LINE.match(line.strip())
+    return bool(m) and m.group(1).lower() == who
+

@@ -258,7 +258,7 @@ class BranchesMixin:
         if (prev is None or prev.items is None or st.items is None or self._reset_pending is not None
                 or self._now - self.loaded_at < 1.0 or not 0 <= st.igt - prev.igt <= IGT_MAX_STEP):
             return                                     # a save loaded (or the game starting): not got
-        from screen import ITEMS
+        from items import ITEMS
         def worn(g: GameState) -> dict[int, int]:
             out: dict[int, int] = {}
             for e in (g.equips or {}).values():
@@ -287,6 +287,33 @@ class BranchesMixin:
     def _count(self, item: str) -> int | None:
         """How many of this item you've got this run: stolen, picked up or bought."""
         return sum(n for _, it, n, _ in self.obtained if it == item)
+
+    def _answered(self, group: str) -> bool:
+        """Whether a branch's checks can be answered from the game (items got this run, AP
+        read): then that answer decides it, not a screen you happen to reach."""
+        chk = self._branches()[1].get(group)
+        if not chk:
+            return False
+        if chk[0] == "ways":
+            ways = [cs for o, cs in chk[1] if o != "main"]
+            if not ways or any(not cs for cs in ways):
+                return False                           # a way with no check (a fight lost): only a screen tells
+            return all(self._holds(*c) is not None for cs in ways for c in cs)
+        return self._holds(*chk) is not None
+
+    def _passed(self, i: int) -> bool:
+        """A sub-step already behind you: done, or one written before a sub-step of the
+        same step that's done (Baku Menu once Baku is won)."""
+        if not self.is_inside(i):
+            return False
+        if i in self.inside_done:
+            return True
+        k = i + 1
+        while k < len(self.steps) and self.is_inside(k):
+            if k in self.inside_done:
+                return True
+            k += 1
+        return False
 
     def _holds(self, subject: str, op: str, n: int) -> bool | None:
         """Whether a check holds: an item you've got this run ("Broadsword < 1"), or a
@@ -345,8 +372,29 @@ class BranchesMixin:
         """Whether step i is on the branch you're on (steps without a branch always are)."""
         if not 0 <= i < len(self.steps):
             return False
-        b = self.branch_of(self.steps[i])
-        return b is None or self.branch_now(b[0]) == b[1]
+        if self.speedrun:
+            return self._prime(i)
+        s = self.steps[i]
+        b = self.branch_of(s)
+        if b is not None:
+            return self.branch_now(b[0]) == b[1]
+        # The plain version of a sub-step (Plant Brain menu) steps aside when a version of
+        # it with a condition that holds is there (Plant Brain menu when Broadsword = 0).
+        if s.get("inside") and not s.get("when") and not s.get("alt"):
+            return not any(k != i and self.steps[k].get("when") and self.active(k) for k in self._versions(i))
+        return True
+
+    def _prime(self, i: int) -> bool:
+        """Speedrun mode: the way the route goes when nothing is looted or missed. Steps of
+        one name differ only by their conditions, so the prime one is the one without:
+        a step with a condition, an alternative (14a) and their sub-steps never come up."""
+        s = self.steps[i]
+        if s.get("when") or s.get("alt"):
+            return False
+        if s.get("inside") and i > 0:
+            p = self.parent_of(i)
+            return p is None or self._prime(p)
+        return True
 
     def _settle_branch(self) -> None:
         """On a step of a branch: that's the branch you're on now."""

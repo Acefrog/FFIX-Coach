@@ -821,6 +821,23 @@ FIELD_NAMES = {
 }
 
 
+# The world map: its screens (one per area of it) all count as one place, "World map",
+# so a step can start or finish on it. Numbers above them are read before a game is loaded.
+WORLD_MAP = 9000
+WORLD_SCREENS = range(9000, 9100)
+FIELD_NAMES[WORLD_MAP] = "World map"
+
+
+def place(f: int | None) -> int | None:
+    """The place a screen number read from the game is: the screen itself, WORLD_MAP for
+    any world map screen, or None for no place (FMVs, loading, the title)."""
+    if f is None or f in (0, 0xFFFF):
+        return None
+    if f in WORLD_SCREENS:
+        return WORLD_MAP
+    return None if f >= 9000 else f
+
+
 def field_name(n: int | None) -> str:
     """"Dali/Inn" for a screen number (the number itself if it isn't known)."""
     if n is None:

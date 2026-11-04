@@ -11,13 +11,13 @@ LEARNED = ROOT / "learned.json"          # what the coach has learned (screens, 
 ROUTES = ROOT / "routes"                 # one file per route
 PROGRESS = ROOT / "progress"             # where each route was left (only if resume_progress is on)
 FIGHTS_CUSTOM = ROOT / "fights_custom.json"   # fights you saved to the editor's fight list
-STOP_FILE = ROOT / "stop_coach"           # made by the launcher's Stop coach button
+STOP_FILE = ROOT / "stop_coach"           # (a stop asked for from outside: the coach quits)
 LOGS = ROOT / "logs"                     # what the coach saw, for checking a run afterwards
 
 
 def write_atomic(path: Path, text: str) -> None:
     """Write a file all at once (a temporary file swapped in), so the coach, the editor and
-    the launcher never read half of one. Windows can refuse the swap for a moment while
+    the app never read half of one. Windows can refuse the swap for a moment while
     another program is reading the file: tried again, then written directly."""
     import os
     import time

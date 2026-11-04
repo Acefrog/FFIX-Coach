@@ -1,6 +1,6 @@
 """Route editor: a window for making and editing routes (one file each in routes/).
 
-    python editor.py      (or Edit route in FFIX Coach.pyw)
+    python editor.py      (or the Route editor page of FFIX Coach.pyw)
 
 Left: every step in order (search and filter by disc). Middle: edit the selected
 step (fight steps are written the same way, plus their HP). Right: how it looks on
@@ -357,7 +357,9 @@ def tooltip(widget, text: str):
     return widget
 
 
-def run() -> int:
+def run(host=None):
+    """The route editor in its own window; or, given `host` (a frame of the FFIX Coach app),
+    built into it: then it returns the editor (the app runs the window)."""
     import tkinter as tk
     from tkinter import messagebox, simpledialog, ttk
 
@@ -371,10 +373,13 @@ def run() -> int:
         routes.create("My route")
 
     class Editor:
-        def __init__(self, root: tk.Tk):
-            self.root = root
+        def __init__(self, root: tk.Tk, host=None):
+            self.root = root                   # the window (dialogs, timers)
+            self.host = host or root           # where the editor is built (a page of the app)
+            self.embedded = host is not None
+            self.on_title = None               # embedded: told "● MPU Route" when unsaved changes come and go
             self.name = routes.active()
-            self.route = routes.inline_cards(json.loads(self.file().read_text(encoding="utf-8")))
+            self.route = routes.inline_cards(json.loads(self.file().read_text(encoding="utf-8-sig")))
             self.saved = json.dumps(self.route, sort_keys=True)
             self.mtime = self.file().stat().st_mtime
             self.undo_stack: list[str] = []
@@ -385,10 +390,16 @@ def run() -> int:
             self.multi: set[int] = set()   # extra steps picked with Ctrl/Shift-click
             self.building = False
 
-            root.title("Route Editor")
-            root.geometry("1280x800")
-            root.minsize(980, 600)
-            root.protocol("WM_DELETE_WINDOW", self.close)
+            if not self.embedded:
+                root.title("Route Editor")
+                root.geometry(self._window_setting() or "1280x800")
+                root.minsize(1060, 600)          # (room for every column)
+                if self._window_setting("zoomed"):
+                    try:
+                        root.state("zoomed")
+                    except tk.TclError:
+                        pass
+                root.protocol("WM_DELETE_WINDOW", self.close)
             self._build()
             i = next((k for k, s in enumerate(self.route["steps"]) if step_key(s) == self.here), 0)
             self.select(i)
@@ -401,33 +412,36 @@ def run() -> int:
             self.dark = tk.BooleanVar(value=bool(routes._config().get("editor_dark", True)))
             self.apply_theme(rebuild=False)
             # top: the route, its options, saving
-            top = ttk.Frame(root, padding=(8, 6))
+            top = ttk.Frame(self.host, padding=(8, 6))
             top.pack(fill="x")
             ttk.Label(top, text="Route", font=("Segoe UI", 10, "bold")).pack(side="left")
-            self.route_pick = ttk.Combobox(top, values=routes.names(), state="readonly", width=36)
+            self.route_pick = ttk.Combobox(top, values=routes.names(), state="readonly", width=26)
             self.route_pick.set(self.name)
-            tooltip(self.route_pick, "The coach follows the route picked here").pack(side="left", padx=6)
+            tooltip(self.route_pick, "Route the coach follows").pack(side="left", padx=6)
             self.route_pick.bind("<<ComboboxSelected>>", lambda e: self.open_route(self.route_pick.get()))
-            for text, cmd, tip in (("New…", self.new_route, "Start a new, empty route"),
-                                   ("Copy…", self.copy_route, "Make a copy of this route"),
+            for text, cmd, tip in (("New…", self.new_route, "New empty route"),
+                                   ("Copy…", self.copy_route, "Copy this route"),
                                    ("Rename…", self.rename_route, "Rename this route"),
-                                   ("Delete", self.delete_route, "Delete this route for good"),
-                                   ("Compare…", self.open_compare, "Compare this route with another one")):
+                                   ("Delete", self.delete_route, "Delete this route"),
+                                   ("Compare…", self.open_compare, "Compare with another route")):
                 tooltip(ttk.Button(top, text=text, command=cmd), tip).pack(side="left", padx=2)
             self.b_save = ttk.Button(top, text="Save", command=self.save, width=8)
             tooltip(self.b_save, "Save (Ctrl+S)").pack(side="right")
             tooltip(ttk.Button(top, text="Reload", command=self.reload),
-                    "Load the route file again").pack(side="right", padx=4)
+                    "Reload from file").pack(side="right", padx=4)
+            self.b_test = ttk.Button(top, text="Test route", command=self.test_route)
+            tooltip(self.b_test, "Simulate a run; list stalls in Checks (F5)").pack(
+                side="right", padx=4)
             ttk.Checkbutton(top, text="Dark mode", variable=self.dark,
                             command=self.toggle_dark).pack(side="right", padx=(10, 8))
             self.status = ttk.Label(top, text="", style="Muted.TLabel")
             self.status.pack(side="right", padx=10)
 
             # bottom: problems found in the route, a small strip across the whole window
-            bottom = ttk.Frame(root, padding=(8, 0, 8, 6))
+            bottom = ttk.Frame(self.host, padding=(8, 0, 8, 6))
             bottom.pack(side="bottom", fill="x")
             self.checks_label = ttk.Label(bottom, text="Checks", font=("Segoe UI", 9, "bold"), width=9)
-            tooltip(self.checks_label, "Problems in the route. Double-click one to go to its step").pack(
+            tooltip(self.checks_label, "Route problems. Double-click or Enter to go there").pack(
                 side="left", anchor="n", pady=(2, 0))
             self.checks = tk.Listbox(bottom, activestyle="none", relief="flat", highlightthickness=1, height=3)
             self._colour_tk(self.checks)
@@ -436,8 +450,9 @@ def run() -> int:
             self.checks.pack(side="left", fill="x", expand=True)
             csb.pack(side="left", fill="y")
             self.checks.bind("<Double-Button-1>", self._on_check)
+            self.checks.bind("<Return>", self._on_check)
 
-            body = ttk.PanedWindow(root, orient="horizontal")
+            body = ttk.PanedWindow(self.host, orient="horizontal")
             body.pack(fill="both", expand=True)
 
             # left: the step list
@@ -451,7 +466,7 @@ def run() -> int:
             ent = ttk.Entry(row, textvariable=self.search)
             self.search_entry = ent
             ent.pack(side="left", fill="x", expand=True)
-            tooltip(ent, "Find steps by title or line")
+            tooltip(ent, "Search steps")
             ttk.Label(row, text=" Disc ").pack(side="left")
             self.disc_filter = tk.StringVar(value="All")
             cb = ttk.Combobox(row, textvariable=self.disc_filter, values=["All", "1", "2", "3", "4"],
@@ -466,19 +481,19 @@ def run() -> int:
                 btn = ttk.Button(parent, text=text, command=cmd, style="Small.TButton")
                 tooltip(btn, tip).pack(side=side, padx=(0, 3) if side == "left" else (3, 0))
                 return btn
-            small(tools, "+ Walk", lambda: self.add("move"), "New walk step after this one (Ctrl+1)")
-            small(tools, "+ Menu", lambda: self.add("menu"), "New menu step after this one (Ctrl+2)")
-            small(tools, "+ Fight", lambda: self.add("boss"), "New fight after this one (Ctrl+3)")
+            small(tools, "+ Walk", lambda: self.add("move"), "Add walk step (Ctrl+1)")
+            small(tools, "+ Menu", lambda: self.add("menu"), "Add menu step (Ctrl+2)")
+            small(tools, "+ Fight", lambda: self.add("boss"), "Add fight (Ctrl+3)")
             small(tools, "\u25b2", lambda: self.move(-1), "Move up (Ctrl+\u2191)")
             small(tools, "\u25bc", lambda: self.move(1), "Move down (Ctrl+\u2193)")
             self.b_redo = small(tools, "Redo", self.redo, "Redo (Ctrl+Y)", side="right")
             self.b_undo = small(tools, "Undo", self.undo, "Undo (Ctrl+Z)", side="right")
             small(tools2, "Duplicate", self.duplicate, "Duplicate (Ctrl+D)")
-            small(tools2, "Copy", self.copy_steps, "Copy (Ctrl+C) \u00b7 Ctrl/Shift-click picks several")
+            small(tools2, "Copy", self.copy_steps, "Copy (Ctrl+C)")
             small(tools2, "Cut", self.cut_steps, "Cut (Ctrl+X)")
-            small(tools2, "Paste", self.paste_steps, "Paste after this step (Ctrl+V)")
+            small(tools2, "Paste", self.paste_steps, "Paste below (Ctrl+V)")
             small(tools2, "Delete", self.delete, "Delete (Del)")
-            small(tools2, "Rename", self._focus_title, "Rename the step (F2)")
+            small(tools2, "Rename", self._focus_title, "Rename (F2)")
             frame = ttk.Frame(left)
             frame.pack(fill="both", expand=True)
             self.tree = ttk.Treeview(frame, columns=("n", "kind", "name"), show="headings", selectmode="extended")
@@ -523,36 +538,68 @@ def run() -> int:
             self.preview.tag_configure("comment", foreground="#b8c4d0",
                                        font=("Segoe UI", 8), lmargin1=22, lmargin2=22)
 
+            placed = [False]
+
             def place_sashes(tries=[0]):
+                # The first time the editor is on screen (in the app it starts on a hidden page,
+                # where the columns can't be sized), from its own width.
+                if placed[0] or not body.winfo_viewable():
+                    return
                 tries[0] += 1
-                if root.winfo_width() < 900 and tries[0] < 20:
+                if body.winfo_width() < 700 and tries[0] < 20:
                     root.after(100, place_sashes)       # not laid out yet
                     return
                 root.update_idletasks()
-                w = max(root.winfo_width(), 980)
-                left_w = max(400, int(w * 0.30))       # room for the step buttons
+                w = body.winfo_width()
+                left_w = max(330, int(w * 0.30))       # room for the step buttons
                 body.sashpos(0, left_w)
-                body.sashpos(1, max(left_w + 380, int(w * 0.72)))
+                # the step in the middle; the preview keeps at least a fifth (a narrow window)
+                body.sashpos(1, min(max(left_w + 330, int(w * 0.72)), int(w * 0.80)))
+                placed[0] = True
+            body.bind("<Map>", lambda e: root.after(50, place_sashes), add="+")
+
+            MID_MIN, RIGHT_MIN = 380, 220               # the step editor, the panel preview
+
+            def keep_widths(_e=None):
+                """No column narrower than what's in it (dragging a divider, or a smaller window):
+                the step list keeps room for its buttons and boxes, the step editor and preview too."""
+                if not placed[0]:
+                    return
+                try:
+                    w = body.winfo_width()
+                    left_min = max(row.winfo_reqwidth(), tools.winfo_reqwidth(), tools2.winfo_reqwidth()) + 16
+                    s0, s1 = body.sashpos(0), body.sashpos(1)
+                except tk.TclError:
+                    return
+                n0 = max(left_min, min(s0, w - MID_MIN - RIGHT_MIN))
+                n1 = max(n0 + MID_MIN, min(s1, w - RIGHT_MIN))
+                if (n0, n1) != (s0, s1):
+                    body.sashpos(0, n0)
+                    body.sashpos(1, n1)
+            for ev in ("<B1-Motion>", "<ButtonRelease-1>", "<Configure>"):
+                body.bind(ev, lambda e: body.after_idle(keep_widths), add="+")
             root.after(150, place_sashes)
 
-            root.bind_all("<Control-s>", lambda e: (self.save(), "break")[1])
-            root.bind_all("<Delete>", self._key(self.delete))
-            root.bind_all("<Control-c>", self._key(self.copy_steps))
-            root.bind_all("<Control-x>", self._key(self.cut_steps))
-            root.bind_all("<Control-v>", self._key(self.paste_steps))
-            root.bind_all("<Control-d>", self._key(self.duplicate))
-            root.bind_all("<Control-Up>", self._key(lambda: self.move_selected(-1)))
-            root.bind_all("<Control-Down>", self._key(lambda: self.move_selected(1)))
-            root.bind_all("<Control-Key-1>", self._key(lambda: self.add("move")))
-            root.bind_all("<Control-Key-2>", self._key(lambda: self.add("menu")))
-            root.bind_all("<Control-Key-3>", self._key(lambda: self.add("boss")))
-            root.bind_all("<Control-f>", lambda e: (self.search_entry.focus_set(), "break")[1])
-            root.bind_all("<F2>", lambda e: (self._focus_title(), "break")[1])
-            root.bind_all("<Escape>", lambda e: (self.tree.focus_set(), "break")[1])
-            root.bind_all("<Alt-Up>", lambda e: (self.move_selected(-1), "break")[1])
-            root.bind_all("<Alt-Down>", lambda e: (self.move_selected(1), "break")[1])
-            root.bind_all("<Control-z>", self._ctrl_z)
-            root.bind_all("<Control-y>", self._ctrl_y)
+            self._bind_key("<Control-s>", lambda e: (self.save(), "break")[1])
+            self._bind_key("<Delete>", self._key(self.delete))
+            self._bind_key("<Control-c>", self._key(self.copy_steps))
+            self._bind_key("<Control-x>", self._key(self.cut_steps))
+            self._bind_key("<Control-v>", self._key(self.paste_steps))
+            self._bind_key("<Control-d>", self._key(self.duplicate))
+            self._bind_key("<Control-Up>", self._key(lambda: self.move_selected(-1)))
+            self._bind_key("<Control-Down>", self._key(lambda: self.move_selected(1)))
+            self._bind_key("<Control-Key-1>", self._key(lambda: self.add("move")))
+            self._bind_key("<Control-Key-2>", self._key(lambda: self.add("menu")))
+            self._bind_key("<Control-Key-3>", self._key(lambda: self.add("boss")))
+            self._bind_key("<Control-f>", lambda e: (self.search_entry.focus_set(), "break")[1])
+            self._bind_key("<F2>", lambda e: (self._focus_title(), "break")[1])
+            self._bind_key("<Escape>", lambda e: (self.tree.focus_set(), "break")[1])
+            self._bind_key("<Alt-Up>", lambda e: (self.move_selected(-1), "break")[1])
+            self._bind_key("<Alt-Down>", lambda e: (self.move_selected(1), "break")[1])
+            self._bind_key("<Control-z>", self._ctrl_z)
+            self._bind_key("<Control-y>", self._ctrl_y)
+            self._bind_key("<Control-Shift-Z>", self._ctrl_y)
+            self._bind_key("<F5>", lambda e: (self.test_route(), "break")[1])
 
         # -- light / dark ---------------------------------------------------
         def apply_theme(self, rebuild=True):
@@ -618,6 +665,7 @@ def run() -> int:
                 self.tree.tag_configure(tag, foreground=th[tag])
             for tag in ("here", "bad", "drop"):
                 self.tree.tag_configure(tag, background=th[tag])
+            self.tree.tag_configure("offway", foreground=th["muted"])   # a way this run isn't taking
 
         # -- list -----------------------------------------------------------
         def visible(self, s: dict) -> bool:
@@ -645,6 +693,7 @@ def run() -> int:
             bad = {i for i, _, _ in find_problems(self.route) if i is not None}
             rep = self._report()
             nums = step_numbers(self.route["steps"])
+            way = self._run_way()
             self.tree.delete(*self.tree.get_children())
             for i, s in enumerate(self.route["steps"]):
                 if not self.visible(s):
@@ -662,7 +711,13 @@ def run() -> int:
                     label = "    \u2514 " + label
                 if s.get("when"):
                     label += f"   [{when_label(s['when'])}]"
-                if step_key(s) == self.here:
+                if i in way:                                   # the way the run in progress goes
+                    if way[i]:
+                        label += "   \u2713 this run"
+                    else:
+                        tags.insert(0, "offway")              # (first: its grey wins over the kind's colour)
+                        label += "   (not this run)"
+                if step_key(s) == self.here and way.get(i, True):   # (of same-name versions: the run's one)
                     tags.append("here")
                     label += "   ● you are here"
                 if i in bad:
@@ -875,16 +930,17 @@ def run() -> int:
         def _area_row(self, s: dict):
             """Where the step starts and finishes. For a fight, where it starts from: with its
             HP, that's how the coach recognises it. A screen picked here is known from the
-            first run; left empty, what the coach learns is used."""
+            first run; left empty, what the Learn key taught is used (the coach learns nothing by itself)."""
             from field_names import FIELD_NAMES, field_name
             fight = s["type"] == "boss"
             self._label("Area")
-            row = ttk.Frame(self.mid)
-            row.pack(fill="x")
             choices = [""] + [f"{n} · {name}" for n, name in sorted(FIELD_NAMES.items())]
 
             def picker(label, key, tip, learned=()):
-                ttk.Label(row, text=label, style="Muted.TLabel").pack(side="left")
+                # Each on its own line (side by side, Finishes on was cut off in a narrow window)
+                row = ttk.Frame(self.mid)
+                row.pack(fill="x", pady=(0, 4))
+                ttk.Label(row, text=label, style="Muted.TLabel", width=17 if fight else 11).pack(side="left")
                 box = ttk.Combobox(row, values=choices, width=30)
                 n = s.get(key)
                 # Nothing picked: what the coach learned shows here, greyed (it's used as it is).
@@ -893,17 +949,11 @@ def run() -> int:
                 box.set(f"{n} · {FIELD_NAMES.get(int(n), '?')}" if n is not None else shown)
                 if shown:
                     box.configure(style="Learned.TCombobox")
-                    tip += ("\n\nLearned on a run" +
+                    tip += ("\nLearned" +
                             (f" (also: {', '.join(field_name(f) for f in learned[1:])})" if len(learned) > 1 else "") +
-                            ". Pick a screen to set it yourself.")
+                            ". Pick one to override.")
                 box.pack(side="left", padx=(4, 12))
                 tooltip(box, tip)
-
-                def narrow(e):
-                    if e.keysym in ("Up", "Down", "Return", "Escape", "Tab"):
-                        return
-                    t = box.get().strip().lower()
-                    box.configure(values=[c for c in choices if t in c.lower()] if t else choices)
 
                 def commit(_e=None):
                     text = box.get().strip()
@@ -916,21 +966,19 @@ def run() -> int:
                     if v == s.get(key):
                         return
                     self.change(lambda: s.__setitem__(key, v) if v is not None else s.pop(key, None))
-                box.bind("<KeyRelease>", narrow)
                 for ev in ("<<ComboboxSelected>>", "<Return>", "<FocusOut>"):
-                    box.bind(ev, commit)
+                    box.bind(ev, commit, add="+")
+                self._live_dropdown(box, choices, commit)
 
             learned = self._learned_screens(s)
             if fight:
                 picker("Fight starts from", "screen",
-                       "The screen you're on when this fight begins. With its HP, that's how the coach "
-                       "knows it's this fight (type a name to search, e.g. Dali)", learned)
+                       "Room the fight starts in (type to search)", learned)
             else:
                 picker("Starts on", "screen",
-                       "The screen this step starts on: reaching it moves the route here "
-                       "(type a name to search, e.g. Dali)", learned)
+                       "Room this step starts in (type to search)", learned)
                 picker("Finishes on", "end_screen",
-                       "Reaching this screen finishes the step, whatever is left on it")
+                       "Room that ends this step")
 
         def _learned_line(self, s: dict):
             """How the coach moves on from this step (or recognises this fight) with what it
@@ -952,7 +1000,7 @@ def run() -> int:
             if learned_here:
                 b = ttk.Button(row, text="Forget", width=7, command=lambda: self._forget(s))
                 b.pack(side="right")
-                tooltip(b, "Forget what was learned here")
+                tooltip(b, "Forget learned data")
             lab.pack(side="left", fill="x", expand=True)
             tooltip(lab, info["how"])
 
@@ -969,7 +1017,7 @@ def run() -> int:
                 return
             learned.forget_step(Coach.step_key(st), self.name,
                                 self._fight_keys(s) if s["type"] == "boss" else None)
-            self.status.configure(text="Forgotten: the coach learns this step again next run")
+            self.status.configure(text="Forgotten: teach it again with the Learn key (F6) on a run, or pick it here")
             self.fill_list()
             self.build_editor()
             self.refresh_side()
@@ -997,7 +1045,7 @@ def run() -> int:
 
         def _when_fields(self, row, s: dict, allow_pick: bool, k: int = 0):
             """Item, comparison and number (Broadsword < 2): the k-th check of s["when"]."""
-            from screen import ITEMS
+            from items import ITEMS
             parts = self._when_parts(s)
             cur = parse_when(parts[k] if k < len(parts) else "")
             item = ttk.Combobox(row, values=([self.PICK] if allow_pick else []) + sorted(ITEMS) + ap_subjects(),
@@ -1045,7 +1093,8 @@ def run() -> int:
                 w.bind("<Return>", commit)
                 w.bind("<FocusOut>", commit)
             num.configure(command=commit)
-            tooltip(item, "Item got this run, or Zidane: Flee AP")
+            self._live_dropdown(item, list(item.cget("values")), commit)
+            tooltip(item, "Item, or AP (Zidane: Flee)")
             return item
 
         def _alt_row(self, s: dict):
@@ -1099,11 +1148,11 @@ def run() -> int:
                 row2 = ttk.Frame(self.mid)
                 row2.pack(fill="x", pady=(4, 0))
                 if s.get("when") and s["when"] != "pick":
-                    button(row2, "+ Item", add_check, "Add another check")
+                    button(row2, "+ Item", add_check, "Add check")
                 way_end = next((k for k in alt_steps if k > self.sel), end)
                 button(row2, "+ Sub-step", self.add_substep, f"Add a step inside {nums[self.sel]}")
                 button(row2, "Close branch", lambda: close(self.sel, way_end),
-                       f"Remove {nums[self.sel]} (Ctrl+Z undoes)")
+                       f"Remove {nums[self.sel]}")
                 return
             # A step shown only if something holds: its checks first, laid out like a branch's.
             adding = getattr(self, "_adding_cond", None) == self.sel
@@ -1111,20 +1160,20 @@ def run() -> int:
             conditioned = not alt_steps and (bool(s.get("when")) or adding)
             if conditioned:
                 first_item = cond_rows(None, allow_pick=False)
-                tooltip(first_item, "Only show this step when this holds")
+                tooltip(first_item, "Show only when true")
             row = ttk.Frame(self.mid)
             row.pack(fill="x", pady=(4, 0))
             button(row, "+ New Branch" if alt_steps else "+ Branch", self.add_alternative,
-                   f"Add another way instead of {nums[self.sel]}")
+                   f"Alternative to {nums[self.sel]}")
             if alt_steps:
                 button(row, "Close branches", lambda: close(alt_steps[0], end),
-                       f"Remove {', '.join(nums[k] for k in alt_steps)} (Ctrl+Z undoes)")
+                       f"Remove {', '.join(nums[k] for k in alt_steps)}")
             button(row, "+ Sub-step", self.add_substep, f"Add a step inside {nums[self.sel]}")
             if alt_steps:
                 return
             if conditioned:
                 if s.get("when"):
-                    button(row, "+ Item", add_check, "Add another check")
+                    button(row, "+ Item", add_check, "Add check")
                 button(row, "Remove condition", lambda: self.change(lambda: s.pop("when", None)),
                        "Always show this step")
             else:
@@ -1146,21 +1195,21 @@ def run() -> int:
             conditioned = bool(s.get("when")) or adding
             if conditioned:
                 first = self._cond_rows_for(s)
-                tooltip(first, "Only do this sub-step when this holds")
+                tooltip(first, "Do only when true")
             row = ttk.Frame(self.mid)
             row.pack(fill="x", pady=(4, 0))
             def button(text, cmd, tip):
                 b = ttk.Button(row, text=text, command=cmd)
                 b.pack(side="left", padx=(0, 6))
                 tooltip(b, tip)
-            button("+ Sub-step", self.add_substep, f"Another sub-step of {nums[self._parent_of(self.sel)]}")
-            button("Not a sub-step", lambda: self.change(lambda: s.pop("inside", None)), "Make it a normal step")
+            button("+ Sub-step", self.add_substep, f"Add sub-step to {nums[self._parent_of(self.sel)]}")
+            button("Not a sub-step", lambda: self.change(lambda: s.pop("inside", None)), "Make a normal step")
             if conditioned:
                 if s.get("when"):
                     def add_check():
                         self._adding_check = self.sel
                         self.select(self.sel)
-                    button("+ Item", add_check, "Add another check")
+                    button("+ Item", add_check, "Add check")
                 button("Remove condition", lambda: self.change(lambda: s.pop("when", None)), "Always do it")
             else:
                 def add_cond():
@@ -1273,8 +1322,7 @@ def run() -> int:
             pick = ttk.Combobox(row, values=labels, state="readonly", width=40, height=24)
             current = next((labels[n + 1] for n, f in enumerate(fights) if f["name"] == s.get("preset")), "Custom")
             pick.set(current)
-            tooltip(pick, "Pick a fight to fill in its Starting HP and where it starts from "
-                          "(as learned on any route). Custom: type your own").pack(
+            tooltip(pick, "Fill HP and room from a known fight").pack(
                 side="left", padx=6)
             def chosen(_e=None):
                 v = pick.get()
@@ -1296,7 +1344,7 @@ def run() -> int:
                 self.change(lambda: s.__setitem__("preset", name))
                 self.status.configure(text=f"Saved {name} to your fight list")
             tooltip(ttk.Button(row, text="Save to list", style="Small.TButton", command=save_mine),
-                    "Add this fight (name, HP, fights, LV5) to your own list, to pick in other routes").pack(
+                    "Add to your fight list").pack(
                 side="left")
 
         def _fight_extras(self, s: dict):
@@ -1350,7 +1398,7 @@ def run() -> int:
                     self.change(do)
                 b = ttk.Button(row2, text="+ Fight type", command=to_groups)
                 b.pack(side="left")
-                tooltip(b, "Another kind of fight on this step (soldiers and mages)")
+                tooltip(b, "Add fight type")
             else:
                 self._label("Fights (any order)")
                 for k, g in enumerate(groups):
@@ -1359,17 +1407,17 @@ def run() -> int:
                     name = ttk.Entry(row, width=16)
                     name.insert(0, g.get("name", ""))
                     name.pack(side="left")
-                    tooltip(name, "Name, shown on the panel with how many are done")
+                    tooltip(name, "Name shown on the panel")
                     ttk.Label(row, text=" HP", style="Muted.TLabel").pack(side="left")
                     hpe = ttk.Entry(row, width=14)
                     hpe.insert(0, ", ".join(str(h) for h in g.get("hp", [])))
                     hpe.pack(side="left", padx=4)
-                    tooltip(hpe, "The enemies' starting HP in this kind of fight")
+                    tooltip(hpe, "Enemy starting HP")
                     ttk.Label(row, text="\u00d7", style="Muted.TLabel").pack(side="left")
                     cnt = ttk.Spinbox(row, from_=1, to=20, width=3)
                     cnt.set(str(g.get("count") or 1))
                     cnt.pack(side="left", padx=4)
-                    tooltip(cnt, "How many of these fights")
+                    tooltip(cnt, "Number of fights")
                     def save(_e=None, g=g, name=name, hpe=hpe, cnt=cnt):
                         try:
                             c = max(1, int(cnt.get()))
@@ -1397,11 +1445,11 @@ def run() -> int:
                         self.change(do)
                     x = ttk.Button(row, text="\u2715", width=3, command=drop)
                     x.pack(side="left", padx=4)
-                    tooltip(x, "Remove this kind")
+                    tooltip(x, "Remove fight type")
                 b = ttk.Button(self.mid, text="+ Fight type",
                                command=lambda: self.change(lambda: s["groups"].append({"name": "", "hp": [], "count": 1})))
                 b.pack(anchor="w", pady=(4, 0))
-                tooltip(b, "Another kind of fight on this step")
+                tooltip(b, "Add fight type")
             if int(s.get("fights") or 1) > 1 or groups:
                 anyv = tk.BooleanVar(value=bool(s.get("any_count")))
                 def set_any():
@@ -1412,8 +1460,7 @@ def run() -> int:
                 cb = ttk.Checkbutton(self.mid, variable=anyv, command=lambda: self.change(set_any),
                                      text="Any number: it ends when you reach the next step's room")
                 cb.pack(anchor="w", pady=(8, 0))
-                tooltip(cb, "For fights whose number changes by route: every fight with its HP counts, "
-                            "however many there are (the number above is ignored)")
+                tooltip(cb, "Count every fight with this HP")
             lv5 = tk.BooleanVar(value=bool(s.get("lv5")))
             def set_lv5():
                 if lv5.get():
@@ -1423,7 +1470,7 @@ def run() -> int:
             cb = ttk.Checkbutton(self.mid, variable=lv5, command=lambda: self.change(set_lv5),
                                  text="LV5 Death warning")
             cb.pack(anchor="w", pady=(8, 0))
-            tooltip(cb, "During this fight the panel warns about anyone in the party whose level is a multiple of 5")
+            tooltip(cb, "Warn about levels that are multiples of 5")
             extra = f"Fight id: {s.get('id', '?')}"
             if s.get("needs"):
                 extra += f" · has {len(s['needs'])} HP check(s), kept as they are"
@@ -1648,6 +1695,17 @@ def run() -> int:
                 self.multi = {i + d for i in picked}
             self.change(do, keep_multi=True)
 
+        def _bind_key(self, seq, fn):
+            """A keyboard shortcut for the editor: only while it's showing (in the app, Delete
+            in Memory setup's box mustn't delete a step)."""
+            self.root.bind_all(seq, lambda e: fn(e) if self.shown() else None, add="+")
+
+        def shown(self) -> bool:
+            try:
+                return bool(self.host.winfo_viewable())
+            except tk.TclError:
+                return False
+
         def _key(self, fn):
             """A list/editor shortcut: left alone while typing in a box."""
             def handler(_e):
@@ -1716,7 +1774,7 @@ def run() -> int:
                 first = range(0)                       # no highlight on the panel any more
                 for i, l in enumerate(s.get("lines", [])):
                     sub = l[:1] in (" ", "\t") and bool(l.strip())
-                    l = l.strip()
+                    l = re.sub(r" *\t[ \t]*", " ", l.strip())    # (tabs in a line: one space, as on the panel)
                     if l.startswith("#"):
                         p.insert("end", l.lstrip("#").strip(), "comment")
                         p.insert("end", "\n")
@@ -1763,6 +1821,8 @@ def run() -> int:
                                                      getattr(self, "learned", None))
             except Exception:
                 pass
+            self.problems += [p for p in getattr(self, "test_found", None) or []
+                              if p[0] is None or p[0] < len(self.route["steps"])]
             self.checks.delete(0, "end")
             self.checks_label.configure(text=f"Checks ({len(self.problems)})" if self.problems else "Checks")
             if not self.problems:
@@ -1780,10 +1840,10 @@ def run() -> int:
 
         def _preview_next(self, p):
             """The next step under the preview, as on the panel when "Show the next step
-            underneath" is ticked in the launcher (config.json: overlay.show_next)."""
+            underneath" is ticked on the Coach page (config.json: overlay.show_next)."""
             try:
                 from paths import CONFIG
-                if not json.loads(CONFIG.read_text(encoding="utf-8")).get("overlay", {}).get("show_next"):
+                if not json.loads(CONFIG.read_text(encoding="utf-8-sig")).get("overlay", {}).get("show_next"):
                     return
             except (OSError, ValueError):
                 return
@@ -1825,6 +1885,133 @@ def run() -> int:
                 else:
                     p.insert("end", ("      " if sub else "• ") + t + "\n", "head")
 
+        def _live_dropdown(self, box, choices, picked):
+            """While you type in `box`, a list of the choices containing what you typed opens
+            under it and narrows with each key. Up/Down move in it, Enter or a click picks,
+            Esc closes it. (The box's own arrow still shows the whole list.)"""
+            state = {"pop": None, "list": None}
+
+            def hide(_e=None):
+                if state["pop"] is not None:
+                    state["pop"].destroy()
+                    state["pop"] = state["list"] = None
+
+            def pick(_e=None):
+                lb = state["list"]
+                if lb is None or not lb.size():
+                    return False
+                sel = lb.curselection()
+                box.set(lb.get(sel[0] if sel else 0))
+                box.icursor("end")
+                hide()
+                picked()
+                return True
+
+            def show(matches):
+                if not matches:
+                    hide()
+                    return
+                if state["pop"] is None:
+                    pop = tk.Toplevel(box)
+                    pop.overrideredirect(True)
+                    pop.attributes("-topmost", True)
+                    lb = tk.Listbox(pop, activestyle="none", relief="solid", borderwidth=1,
+                                    highlightthickness=0, takefocus=0, exportselection=False)
+                    self._colour_tk(lb)
+                    sb = ttk.Scrollbar(pop, orient="vertical", command=lb.yview)
+                    lb.configure(yscrollcommand=sb.set)
+                    lb.pack(side="left", fill="both", expand=True)
+                    sb.pack(side="left", fill="y")
+                    lb.bind("<ButtonRelease-1>", lambda e: (box.focus_set(), pick()))
+                    state["pop"], state["list"] = pop, lb
+                pop, lb = state["pop"], state["list"]
+                lb.delete(0, "end")
+                for c in matches[:300]:
+                    lb.insert("end", c)
+                lb.selection_set(0)
+                lb.configure(height=min(12, len(matches)))
+                box.update_idletasks()
+                pop.geometry(f"+{box.winfo_rootx()}+{box.winfo_rooty() + box.winfo_height()}")
+                lb.configure(width=max(box.cget("width"), 30))
+                pop.lift()
+
+            def move(step):
+                lb = state["list"]
+                if lb is None:
+                    return None
+                sel = lb.curselection()
+                k = max(0, min(lb.size() - 1, (sel[0] if sel else -1) + step))
+                lb.selection_clear(0, "end")
+                lb.selection_set(k)
+                lb.see(k)
+                return "break"
+
+            def key(e):
+                if e.keysym in ("Up", "Down", "Return", "KP_Enter", "Escape", "Tab", "Shift_L", "Shift_R",
+                                "Control_L", "Control_R", "Left", "Right", "Home", "End"):
+                    return
+                t = box.get().strip().lower()
+                matches = [c for c in choices if c and t in c.lower()] if t else []
+                box.configure(values=[c for c in choices if t in c.lower()] if t else choices)
+                show(matches)
+
+            def enter(_e):
+                if not pick():                          # nothing listed: take what's typed
+                    picked()
+                return "break"
+
+            def focus_out(_e):
+                box.after(150, lambda: hide() if box.focus_get() is not box else None)
+
+            box.bind("<KeyRelease>", key, add="+")
+            box.bind("<Down>", lambda e: move(1), add="+")
+            box.bind("<Up>", lambda e: move(-1), add="+")
+            box.bind("<Return>", enter)                 # first: picks from the list if it's open
+            box.bind("<KP_Enter>", enter)
+            box.bind("<Escape>", lambda e: (hide(), "break")[1] if state["pop"] is not None else None)
+            box.bind("<FocusOut>", focus_out, add="+")
+            box.bind("<Destroy>", hide, add="+")
+            box.bind("<<ComboboxSelected>>", hide, add="+")
+
+        def test_route(self):
+            """Play the route as it is here (saved or not) through in a pretend game, in the
+            background, then list what it found in Checks."""
+            if getattr(self, "_testing", False):
+                return
+            import threading
+            import route_test
+            from coach import step_numbers
+            from paths import LEARNED
+            raw = copy.deepcopy(self.route)
+            self._testing, result = True, {}
+            self.b_test.configure(text="Testing…", state="disabled")
+            self.status.configure(text="Testing the route in a pretend game…")
+
+            def work():
+                try:
+                    result["found"] = route_test.test_route(raw, LEARNED)
+                except Exception as e:                  # a bug in the test itself: say so
+                    result["error"] = f"{type(e).__name__}: {e}"
+
+            def done():
+                if "found" not in result and "error" not in result:
+                    self.root.after(300, done)
+                    return
+                self._testing = False
+                self.b_test.configure(text="Test route", state="normal")
+                if "error" in result:
+                    self.test_found = [(None, None, f"Test route couldn't finish: {result['error']}")]
+                else:
+                    n = step_numbers(raw["steps"])
+                    self.test_found = [(i, None, f"Test: step {n[i]}: {why}") for i, why in result["found"]]
+                    if not result["found"]:
+                        self.test_found = [(None, None, "Test: ✓ the route moves on by itself all the way")]
+                self.refresh_side()
+                self.status.configure(text="Route tested: see Checks." if result.get("found") or "error" in result
+                                      else "Route tested: it moves on by itself all the way.")
+            threading.Thread(target=work, daemon=True).start()
+            self.root.after(300, done)
+
         def _on_check(self, _e):
             sel = self.checks.curselection()
             if sel and self.problems and self.problems[sel[0]][0] is not None:
@@ -1843,7 +2030,11 @@ def run() -> int:
             self.b_save.state(["!disabled"] if d else ["disabled"])
             self.b_undo.state(["!disabled"] if self.undo_stack else ["disabled"])
             self.b_redo.state(["!disabled"] if self.redo_stack else ["disabled"])
-            self.root.title(("● " if d else "") + f"Route Editor · {self.name}")
+            if self.embedded:
+                if self.on_title:
+                    self.on_title(("● " if d else "") + self.name)
+            else:
+                self.root.title(("● " if d else "") + f"Route Editor · {self.name}")
 
         def save(self):
             if not self.dirty():
@@ -1866,7 +2057,7 @@ def run() -> int:
             if ask and self.dirty() and not messagebox.askyesno(
                     "Reload", "Throw away your unsaved changes and load the saved route again?", parent=self.root):
                 return
-            self.route = routes.inline_cards(json.loads(self.file().read_text(encoding="utf-8")))
+            self.route = routes.inline_cards(json.loads(self.file().read_text(encoding="utf-8-sig")))
             self.saved = json.dumps(self.route, sort_keys=True)
             self.mtime = self.file().stat().st_mtime
             self.undo_stack.clear()
@@ -1894,16 +2085,36 @@ def run() -> int:
                         self.build_editor()
                 self.learned_mtime = lm
                 h = self._here_key()
-                if h != self.here:
+                pm = routes.progress_path(self.name).stat().st_mtime if routes.progress_path(self.name).exists() else 0
+                if h != self.here or pm != getattr(self, "progress_mtime", pm):
                     self.here = h
-                    self.fill_list()
+                    self.fill_list()                     # where the run is, and the way it's going
+                self.progress_mtime = pm
             except OSError:
                 pass
             self.root.after(2000, self._watch_file)
 
+        def _run_way(self) -> dict[int, bool]:
+            """Which way the coach's run in progress goes (report.run_way), worked out again
+            only when the run or the route changes."""
+            p = routes.progress_path(self.name)
+            try:
+                m = p.stat().st_mtime
+            except OSError:
+                return {}
+            key = (self.name, m, json.dumps(self.route, sort_keys=True))
+            if getattr(self, "_way_key", None) != key:
+                try:
+                    import report
+                    self._way = report.run_way(self.route, p)
+                except Exception:
+                    self._way = {}
+                self._way_key = key
+            return self._way
+
         def _here_key(self):
             try:
-                return json.loads(routes.progress_path(self.name).read_text()).get("key")
+                return json.loads(routes.progress_path(self.name).read_text(encoding="utf-8-sig")).get("key")
             except (OSError, ValueError):
                 return None
 
@@ -1931,10 +2142,11 @@ def run() -> int:
                 self.route_pick.set(self.name)
                 return
             self.name = name
+            self.test_found = None                       # the last test was of the other route
             routes.set_active(name)                      # the coach switches to it too
             self.undo_stack.clear()
             self.redo_stack.clear()
-            self.route = routes.inline_cards(json.loads(self.file().read_text(encoding="utf-8")))
+            self.route = routes.inline_cards(json.loads(self.file().read_text(encoding="utf-8-sig")))
             self.saved = json.dumps(self.route, sort_keys=True)
             self.mtime = self.file().stat().st_mtime
             self.here = self._here_key()
@@ -1971,7 +2183,7 @@ def run() -> int:
                 messagebox.showerror("Not renamed", str(err), parent=self.root)
                 return
             self.name = new
-            self.route = routes.inline_cards(json.loads(self.file().read_text(encoding="utf-8")))
+            self.route = routes.inline_cards(json.loads(self.file().read_text(encoding="utf-8-sig")))
             self.saved = json.dumps(self.route, sort_keys=True)
             self.mtime = self.file().stat().st_mtime
             self.route_pick.configure(values=routes.names())
@@ -2003,12 +2215,13 @@ def run() -> int:
                 self.cmp_win.lift()
                 return
             th = self.th
-            w = self.cmp_win = tk.Toplevel(self.root)
-            w.title(f"Compare routes")
-            w.geometry("1250x780")
-            w.configure(bg=th["bg"])
+            # Over the editor, filling it (not a window of its own): Close goes back.
+            w = self.cmp_win = tk.Frame(self.host, bg=th["bg"])
+            w.place(x=0, y=0, relwidth=1, relheight=1)
+            w.lift()
             top = ttk.Frame(w, padding=8)
             top.pack(fill="x")
+            ttk.Button(top, text="Close", command=self._cmp_close).pack(side="right")
             ttk.Label(top, text="This route:", style="Muted.TLabel").pack(side="left")
             self.cmp_this = ttk.Label(top, text=self.name, font=("Segoe UI", 10, "bold"))
             self.cmp_this.pack(side="left", padx=(4, 16))
@@ -2072,9 +2285,14 @@ def run() -> int:
                 self.cmp_texts.append((head, tx))
             self._cmp_fill()
 
+        def _cmp_close(self):
+            if getattr(self, "cmp_win", None) is not None:
+                self.cmp_win.destroy()
+                self.cmp_win = None
+
         def _cmp_other(self) -> dict | None:
             try:
-                return routes.inline_cards(json.loads(routes.path(self.cmp_pick.get()).read_text(encoding="utf-8")))
+                return routes.inline_cards(json.loads(routes.path(self.cmp_pick.get()).read_text(encoding="utf-8-sig")))
             except (OSError, ValueError):
                 return None
 
@@ -2179,20 +2397,55 @@ def run() -> int:
                 self.search.set("")
                 self.disc_filter.set("All")
                 self.select(r["a"])
-                self.root.lift()
+                self._cmp_close()                        # back to the editor, on that step
 
-        def close(self):
+        def close(self) -> bool:
+            """Asks to save unsaved changes. False if you cancelled (nothing closes)."""
             if self.dirty():
-                ans = messagebox.askyesnocancel("Unsaved changes", "Save your changes before closing?",
+                ans = messagebox.askyesnocancel("Unsaved changes", "Save your changes to the route first?",
                                                 parent=self.root)
                 if ans is None:
-                    return
+                    return False
                 if ans:
                     self.save()
                     if self.dirty():
-                        return
+                        return False
+            if self.embedded:
+                return True                      # (the app closes its window)
+            self._remember_window()
             self.root.destroy()
+            return True
 
+        def _window_setting(self, what: str = "geometry"):
+            """Where the editor window was last time (config.json: editor.geometry/zoomed)."""
+            try:
+                from paths import CONFIG
+                v = json.loads(CONFIG.read_text(encoding="utf-8-sig")).get("editor", {}).get(what)
+            except (OSError, ValueError, AttributeError):
+                return None
+            if what == "geometry" and not (isinstance(v, str) and re.fullmatch(r"\d+x\d+[+-]-?\d+[+-]-?\d+", v)):
+                return None
+            if what == "geometry":                      # not off every screen (a monitor unplugged)
+                w, h, x, y = map(int, re.findall(r"-?\d+", v))
+                if not (-w + 100 < x < self.root.winfo_screenwidth() - 100 and -10 < y < self.root.winfo_screenheight() - 100):
+                    return f"{w}x{h}"
+            return v
+
+        def _remember_window(self):
+            try:
+                from paths import CONFIG
+                zoomed = self.root.state() == "zoomed"
+                cfg = json.loads(CONFIG.read_text(encoding="utf-8-sig"))
+                ed = cfg.setdefault("editor", {})
+                ed["zoomed"] = zoomed
+                if not zoomed:
+                    ed["geometry"] = self.root.geometry()
+                write_atomic(CONFIG, json.dumps(cfg, indent=2))
+            except (OSError, ValueError, AttributeError, tk.TclError):
+                pass                                     # just not remembered
+
+    if host is not None:
+        return Editor(host.winfo_toplevel(), host=host)
     root = tk.Tk()
     root.editor = Editor(root)
     root.mainloop()
