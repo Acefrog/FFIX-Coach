@@ -40,7 +40,7 @@ from field_names import field_name, place
 from memory import GameState
 from tuning import (ATB_DROP, CAPPED_HP, CAPPED_SETTLE, CLEARED_SECONDS, IDENTIFY_WITHIN, IGT_BACK,
                     IGT_MAX_STEP, IGT_NEW_GAME, IGT_RESET_CONFIRM, IGT_TRUST,
-                    LOADING_HP, LOOKAHEAD_STEPS, MAX_SCREEN, NO_SCREEN, SCRIPT_HP, STALE_SECONDS,
+                    LOADING_HP, LOOKAHEAD_STEPS, SCRIPT_HP, STALE_SECONDS,
                     UNDO_WINDOW)
 from steps import _bars_filling, _step_moves, check_lines, step_key, step_lines
 from learned import Learned
@@ -325,7 +325,7 @@ class Coach(BranchesMixin, FightsMixin, FieldsMixin, ChecksMixin, ViewMixin):
         self._save_progress()
 
     def switch_route(self, route: dict, progress_path: Path | None) -> None:
-        """A different route picked in the editor or launcher: start over on it, at the
+        """A different route picked in the app (Coach page or editor): start over on it, at the
         place that route was left at (if progress is kept: config's resume_progress).
         Settings from outside the route (show the next step, why steals can't be seen) stay."""
         learned_path, party_slots, resume = self._init_args

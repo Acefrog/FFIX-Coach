@@ -33,18 +33,3 @@ def black_bar(client: tuple[int, int, int, int], aspect: float, top_ui: int, bot
     if bar_h >= MIN_BAR_HEIGHT:
         return left, area_bottom - bar_h, w, bar_h, "bottom"
     return None
-
-
-def picture_rect(client: tuple[int, int, int, int], aspect: float, top_ui: int, bottom_ui: int,
-                 screen_h: int) -> tuple[int, int, int, int] | None:
-    """Where the game picture itself is: (x, y, w, h), centred in the window's display area."""
-    left, top, right, bottom = client
-    if bottom - top >= screen_h:
-        top_ui = bottom_ui = 0
-    area_top, area_bottom = top + top_ui, bottom - bottom_ui
-    w, h = right - left, area_bottom - area_top
-    if w <= 0 or h <= 0:
-        return None
-    pic_w = min(w, int(h * aspect))
-    pic_h = min(h, int(pic_w / aspect))
-    return left + (w - pic_w) // 2, area_top + (h - pic_h) // 2, pic_w, pic_h

@@ -17,7 +17,7 @@ LOGS = ROOT / "logs"                     # what the coach saw, for checking a ru
 
 def write_atomic(path: Path, text: str) -> None:
     """Write a file all at once (a temporary file swapped in), so the coach, the editor and
-    the launcher never read half of one. Windows can refuse the swap for a moment while
+    the app never read half of one. Windows can refuse the swap for a moment while
     another program is reading the file: tried again, then written directly."""
     import os
     import time

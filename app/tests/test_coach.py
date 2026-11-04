@@ -567,9 +567,9 @@ def test_hp_finder_prefers_real_table_when_decoy_also_updates():
     class R:
         def snapshot(self_inner):
             return ram.tick()
-    real_input, real_sleep = builtins.input, finder.time.sleep
+    real_input, real_sleep = builtins.input, finder._sleep
     builtins.input = lambda *_: next(answers)
-    finder.time.sleep = lambda *_: None
+    finder._sleep = lambda *_: None                     # (no waiting in the test)
     orig_set = ram.set_party
     def both(party, decoy_too=False):            # the decoy keeps up with live HP too
         orig_set(party, decoy_too=True)
@@ -584,7 +584,7 @@ def test_hp_finder_prefers_real_table_when_decoy_also_updates():
     try:
         found = find_battle(R2(), {})
     finally:
-        builtins.input, finder.time.sleep = real_input, real_sleep
+        builtins.input, finder._sleep = real_input, real_sleep
     assert found["battle_base"] == "0x10A7C0" and found["slot_stride"] == "0x1B4", found
 
 
@@ -4033,10 +4033,12 @@ def test_the_app_is_one_window_with_the_coach_inside():
         app.show("editor")
         root.update()
         assert app.editor.shown()
-        app.editor.open_compare()
-        root.update()
-        assert app.editor.cmp_win.winfo_toplevel() is root and tops() == []
-        app.editor._cmp_close()
+        import routes as _routes
+        if len(_routes.names()) > 1:                   # (Compare needs a second route)
+            app.editor.open_compare()
+            root.update()
+            assert app.editor.cmp_win.winfo_toplevel() is root and tops() == []
+            app.editor._cmp_close()
         for _ in range(2):
             app.session.start(simulate=True)
             end = _t.time() + 1.5

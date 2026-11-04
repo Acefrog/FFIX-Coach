@@ -7,7 +7,7 @@ from field_names import field_name, place
 from memory import GameState
 from steps import step_lines
 from syntax import substep_call
-from tuning import FIELD_LOOKAHEAD, FIELD_SETTLE, LOAD_SETTLE, MAX_SCREEN, NO_SCREEN, STEP_SETTLE
+from tuning import FIELD_LOOKAHEAD, FIELD_SETTLE, LOAD_SETTLE, STEP_SETTLE
 
 
 class FieldsMixin:

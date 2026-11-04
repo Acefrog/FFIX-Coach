@@ -140,7 +140,7 @@ class ChecksMixin:
                 out.append(i)
         return out
 
-    def pickup_event(self, item: str, source: str = "screen", named_only: bool = False) -> None:
+    def pickup_event(self, item: str, source: str = "screen") -> None:
         """An item (or gil) turned up in the bag: a pickup for the step that names it. Key items
         aren't in the bag: they tick from the key item block (_menu_progress)."""
         if self.in_battle:
@@ -157,7 +157,7 @@ class ChecksMixin:
             return Counter(x for _, items in pickup_targets(_pickup_lines(self.steps[i])) for x in items)
         target = next((i for i in window if names(i)[item] > self.picked.get(i, []).count(item)
                        and (i == self.step or item != "Gil")), None)
-        if target is None and not named_only:
+        if target is None:
             # "any item" lines: only the step on screen (a later step needs the item named)
             target = next((i for i in window if i == self.step and self._accepts(i, item)), None)
         if target is None:

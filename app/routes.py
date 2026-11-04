@@ -1,6 +1,6 @@
 """Routes: each one a file in the routes folder; config.json says which one is in use.
 
-The coach, the editor and the launcher all go through here, so picking a route in
+The coach, the editor and the Coach page all go through here, so picking a route in
 one of them is picked everywhere. Each route keeps its own place (progress) too.
 """
 

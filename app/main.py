@@ -174,12 +174,12 @@ class Runner:
     def tick(self, render) -> bool:
         """Read the game once and update the panel. False when it's time to quit."""
         coach = self.coach
-        if self.stop_file.exists():              # "Stop coach" in the launcher (game there or not)
+        if self.stop_file.exists():              # a stop asked for from outside (game there or not)
             try:
                 self.stop_file.unlink()
             except OSError:
                 pass
-            print("Stopped from the launcher.")
+            print("Stopped (asked from outside).")
             self.stopped = True
             return False
         try:
@@ -277,14 +277,14 @@ class Runner:
 
     def check_route_file(self) -> None:
         """Pick up edits to the route (from the editor) while running, and a different
-        route being picked in the editor or launcher."""
+        route being picked in the app (Coach page or editor)."""
         if time.monotonic() - self.last_route_check < 1.5:
             return
         self.last_route_check = time.monotonic()
         coach = self.coach
         try:
             m = self.config_path.stat().st_mtime
-            if m != self.cfg_mtime:              # e.g. "Show the next step" ticked in the launcher
+            if m != self.cfg_mtime:              # e.g. "Show the next step" ticked on the Coach page
                 self.cfg_mtime = m
                 cfg = json.loads(self.config_path.read_text(encoding="utf-8-sig"))
                 coach.show_next = bool(cfg.get("overlay", {}).get("show_next", False))

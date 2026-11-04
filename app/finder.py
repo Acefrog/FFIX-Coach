@@ -29,7 +29,6 @@ from __future__ import annotations
 
 import json
 import sys
-import time
 
 from memory import DuckStationRam, MemoryError_, PS1_RAM_SIZE
 

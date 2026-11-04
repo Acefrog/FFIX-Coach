@@ -1840,7 +1840,7 @@ def run(host=None):
 
         def _preview_next(self, p):
             """The next step under the preview, as on the panel when "Show the next step
-            underneath" is ticked in the launcher (config.json: overlay.show_next)."""
+            underneath" is ticked on the Coach page (config.json: overlay.show_next)."""
             try:
                 from paths import CONFIG
                 if not json.loads(CONFIG.read_text(encoding="utf-8-sig")).get("overlay", {}).get("show_next"):
